@@ -13,11 +13,11 @@ from pathlib import Path
 # Local paths
 # ---------------------------------------------------------------------------
 
-BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Each group member should place their own private IPv8 key at this path.
 # The file itself should NOT be committed.
-KEY_FILE = BASE_DIR / "keys" / "lab_identity_key.pem"
+KEY_FILE = REPO_ROOT / "keys" / "lab_identity_key.pem"
 
 
 # ---------------------------------------------------------------------------
