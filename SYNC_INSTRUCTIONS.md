@@ -632,8 +632,30 @@ Example script:
 
 set -e
 
+# ---------------------------------------------------------------------
+# Usage:
+#
+#   ./scripts/push_lab3_to_synced.sh <lab3-folder-path> <synced-branch-name>
+#
+# Example:
+#
+#   ./scripts/push_lab3_to_synced.sh lab3-pow-blockchain jayran-lab3
+#
+# Darian example:
+#
+#   ./scripts/push_lab3_to_synced.sh lab1-ipv8-pow/lab3 darian-lab3
+#
+# Yves example:
+#
+#   ./scripts/push_lab3_to_synced.sh lab3 yves-lab3
+# ---------------------------------------------------------------------
+
 LAB3_PATH="$1"
 SYNCED_BRANCH="$2"
+
+# IF YOU WANT YOU CAN ALSO HARDCODE IT
+# LAB3_PATH="lab3"
+# SYNCED_BRANCH="yves-lab3"
 
 LOCAL_SPLIT_BRANCH="lab3-only"
 SYNCED_REMOTE="synced"
@@ -664,7 +686,10 @@ git status --short
 echo
 echo "Creating fresh '${LOCAL_SPLIT_BRANCH}' branch from '${LAB3_PATH}'..."
 
+# Delete old local split branch if it exists.
 git branch -D "$LOCAL_SPLIT_BRANCH" 2>/dev/null || true
+
+# Create a branch containing only the Lab 3 folder contents.
 git subtree split --prefix="$LAB3_PATH" -b "$LOCAL_SPLIT_BRANCH"
 
 echo
@@ -677,25 +702,9 @@ echo "Done."
 echo
 echo "Now open a Pull Request on GitHub:"
 echo "  ${SYNCED_BRANCH}  ->  main"
-```
-
-Make it executable:
-
-```bash
-chmod +x scripts/push_lab3_to_synced.sh
-```
-
-Example usage:
-
-```bash
-# Jayran
-./scripts/push_lab3_to_synced.sh lab3-pow-blockchain jayran-lab3
-
-# Darian
-./scripts/push_lab3_to_synced.sh lab1-ipv8-pow/lab3 darian-lab3
-
-# Yves
-./scripts/push_lab3_to_synced.sh lab3 yves-lab3
+echo
+echo "Synced repo:"
+echo "  git@github.com:jayran-d/cs4160-lab3-blockchain.git"
 ```
 
 This script does not create the pull request. It only pushes the branch to the synced repo.
@@ -729,7 +738,7 @@ set -e
 #   ./scripts/pull_lab3_from_synced.sh lab3
 # ---------------------------------------------------------------------
 
-LAB3_PATH="$1"
+LAB3_PATH="$1" #YOU CAN ALSO HARDCODE IT, e.g., LAB3_PATH="lab3-pow-blockchain"
 
 SYNCED_REMOTE="synced"
 SYNCED_BRANCH="main" #You can change this if your synced branch has a different name, e.g., "jayran-lab3"
