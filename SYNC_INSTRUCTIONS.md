@@ -720,36 +720,10 @@ You can use this script to pull from the synced repo. You can adjust the `SYNCED
 
 set -e
 
-# ---------------------------------------------------------------------
-# Usage:
-#
-#   ./scripts/pull_lab3_from_synced.sh <lab3-folder-path>
-#
-# Example:
-#
-#   ./scripts/pull_lab3_from_synced.sh lab3-pow-blockchain
-#
-# Darian example:
-#
-#   ./scripts/pull_lab3_from_synced.sh lab1-ipv8-pow/lab3
-#
-# Yves example:
-#
-#   ./scripts/pull_lab3_from_synced.sh lab3
-# ---------------------------------------------------------------------
-
-LAB3_PATH="$1" #YOU CAN ALSO HARDCODE IT, e.g., LAB3_PATH="lab3-pow-blockchain"
+LAB3_PATH="${1:-lab3-pow-blockchain}"
 
 SYNCED_REMOTE="synced"
-SYNCED_BRANCH="main" #You can change this if your synced branch has a different name, e.g., "jayran-lab3"
-
-if [ -z "$LAB3_PATH" ]; then
-    echo "Usage: $0 <lab3-folder-path>"
-    echo
-    echo "Example:"
-    echo "  $0 lab3-pow-blockchain"
-    exit 1
-fi
+SYNCED_BRANCH="main"
 
 if [ ! -d "$LAB3_PATH" ]; then
     echo "Error: Lab 3 folder does not exist: $LAB3_PATH"
@@ -779,22 +753,35 @@ if [ -n "$(git status --porcelain)" ]; then
     exit 1
 fi
 
-echo "Fetching latest synced/main..."
+echo "Fetching latest ${SYNCED_REMOTE}/${SYNCED_BRANCH}..."
 git fetch "$SYNCED_REMOTE"
 
-echo
-echo "Pulling ${SYNCED_REMOTE}/${SYNCED_BRANCH} into ${LAB3_PATH}/..."
-echo
+TMP_DIR="$(mktemp -d)"
 
-# Pull synced/main into the Lab 3 folder.
-# The synced repo root becomes the contents of the personal Lab 3 folder.
-git subtree pull --prefix="$LAB3_PATH" "$SYNCED_REMOTE" "$SYNCED_BRANCH" --squash
+echo
+echo "Exporting ${SYNCED_REMOTE}/${SYNCED_BRANCH} into temporary folder..."
+git archive "${SYNCED_REMOTE}/${SYNCED_BRANCH}" | tar -x -C "$TMP_DIR"
+
+echo
+echo "Syncing latest shared Lab 3 files into ${LAB3_PATH}/..."
+
+rsync -av --delete \
+    --exclude='keys/*.pem' \
+    --exclude='keys/*.key' \
+    --exclude='keys/lab_identity_key.pem' \
+    "$TMP_DIR"/ "$LAB3_PATH"/
+
+rm -rf "$TMP_DIR"
 
 echo
 echo "Done."
 echo
-echo "Your personal Lab 3 folder has been updated from synced/main."
-echo "Now push your personal branch if needed:"
+echo "Check what changed:"
+echo "  git status"
+echo
+echo "Then commit the synced update if needed:"
+echo "  git add ${LAB3_PATH}"
+echo "  git commit -m \"Sync latest shared Lab 3 changes\""
 echo "  git push origin <your-personal-branch>"
 ```
 
