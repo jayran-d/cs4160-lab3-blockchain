@@ -8,17 +8,15 @@ ignored by Git.
 
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # Local paths
 # ---------------------------------------------------------------------------
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+# REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Each group member should place their own private IPv8 key at this path.
 # The file itself should NOT be committed.
-KEY_FILE = REPO_ROOT / "keys" / "lab_identity_key.pem"
-
+KEY_FILE = "keys/lab_identity_key.pem"
 
 # ---------------------------------------------------------------------------
 # Group / blockchain identifiers
@@ -30,7 +28,6 @@ GROUP_ID = "d8c9d397bea2ee37"
 # Community ID for our blockchain overlay.
 # Hex-decoded value: "DarianJayranYvesLab3"
 BLOCKCHAIN_COMMUNITY_ID_HEX = "44617269616E4A617972616E597665734C616233"
-
 
 # ---------------------------------------------------------------------------
 # Registration server configuration
@@ -44,7 +41,6 @@ REGISTER_SERVER_PUBLIC_KEY_HEX = (
     "4c69624e61434c504b3ae3fc099fb56ca3b5e1de9a1c843387f2acdbb78b1bd4350"
     "ffde518068a0d246344b10d0d8c355fd0d76873e7d7f7838f3715e025af08f791324495e083331ce6"
 )
-
 
 # ---------------------------------------------------------------------------
 # Group member public keys
@@ -74,7 +70,6 @@ MEMBER_PUBLIC_KEYS_HEX = {
     "jayran": MEMBER_2_PUBLIC_KEY_HEX,
     "yves": MEMBER_3_PUBLIC_KEY_HEX,
 }
-
 
 # ---------------------------------------------------------------------------
 # Blockchain parameters
