@@ -2,7 +2,7 @@ from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 import asyncio
 
-from .payloads import RegisterBlockchainPayload, RegisterResponsePayload
+from .registration_payloads import RegisterBlockchainPayload, RegisterResponsePayload
 
 from config import REGISTER_COMMUNITY_ID_HEX, REGISTER_SERVER_PUBLIC_KEY_HEX, BLOCKCHAIN_COMMUNITY_ID_HEX
 

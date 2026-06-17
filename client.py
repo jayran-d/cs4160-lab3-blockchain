@@ -6,7 +6,7 @@ from ipv8.configuration import ConfigBuilder, Strategy, WalkerDefinition, defaul
 from ipv8_service import IPv8
 from ipv8.util import run_forever
 
-from registration.community import Lab3RegistrationCommunity
+from registration.registation_community import Lab3RegistrationCommunity
 from community import BlockchainCommunity
 from config import KEY_FILE
 
