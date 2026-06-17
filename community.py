@@ -16,6 +16,7 @@ from payloads import (
     GetBlockPayload,
     BlockResponsePayload,
     BlockGossipPayload,
+    TransactionGossipPayload,
 )
 
 from config import (
@@ -43,6 +44,7 @@ class BlockchainCommunity(Community):
         self.add_message_handler(GetChainHeightPayload, self.on_get_chain_height)
         self.add_message_handler(GetBlockPayload, self.on_get_block)
         self.add_message_handler(BlockGossipPayload, self.on_block_gossip)
+        self.add_message_handler(TransactionGossipPayload, self.on_transaction_gossip)
 
         # ------------------------------------------------------------------
         # Known peers
@@ -67,6 +69,7 @@ class BlockchainCommunity(Community):
         # Local blockchain state
         # ------------------------------------------------------------------
         self.blockchain = Blockchain()
+        self.mempool = self.blockchain.mempool
         self.miner = Miner(
             blockchain=self.blockchain,
             broadcast_block=self.broadcast_block_to_teammates,
@@ -234,7 +237,7 @@ class BlockchainCommunity(Community):
         """
         Share a server-submitted transaction with teammates.
         """
-        payload = SubmitTransactionPayload(
+        payload = TransactionGossipPayload(
             sender_key=transaction.sender_key,
             data=transaction.data,
             timestamp=transaction.timestamp,
@@ -269,11 +272,8 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     @lazy_wrapper(SubmitTransactionPayload)
     def on_submit_transaction(self, peer, payload: SubmitTransactionPayload):
-        is_server = self.is_server_peer(peer)
-        is_teammate = self.is_teammate_peer(peer)
-
-        if not is_server and not is_teammate:
-            print("Ignoring SubmitTransaction from unknown peer")
+        if not self.is_server_peer(peer):
+            print("Ignoring SubmitTransaction from non-server peer")
             return
 
         tx = Transaction(
@@ -294,7 +294,7 @@ class BlockchainCommunity(Community):
                 f"Rejected transaction: invalid signature, " f"tx_hash={tx_hash.hex()}"
             )
 
-        elif self.blockchain.mempool.contains(tx_hash):
+        elif self.mempool.contains(tx_hash):
             success = True
             message = "Transaction already in mempool"
 
@@ -307,23 +307,22 @@ class BlockchainCommunity(Community):
             print(f"Transaction already in best chain: {tx_hash.hex()}")
 
         else:
-            self.blockchain.mempool.add(tx)
+            self.mempool.add(tx)
 
             success = True
             message = "Transaction accepted into mempool"
-            should_broadcast = is_server
+            should_broadcast = True
 
             print(f"Accepted transaction: {tx_hash.hex()}")
-            print(f"Mempool size: {len(self.blockchain.mempool)}")
+            print(f"Mempool size: {len(self.mempool)}")
 
-        if is_server:
-            response = SubmitTransactionResponsePayload(
-                success=success,
-                tx_hash=tx_hash,
-                message=message,
-            )
+        response = SubmitTransactionResponsePayload(
+            success=success,
+            tx_hash=tx_hash,
+            message=message,
+        )
 
-            self.ez_send(peer, response)
+        self.ez_send(peer, response)
 
         if should_broadcast:
             # Share transaction with teammates.
@@ -382,6 +381,36 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     # Internal teammate message handlers
     # ----------------------------------------------------------------------
+    @lazy_wrapper(TransactionGossipPayload)
+    def on_transaction_gossip(self, peer, payload: TransactionGossipPayload):
+        self.apply_transaction_gossip_payload(payload)
+
+    def apply_transaction_gossip_payload(self, payload: TransactionGossipPayload) -> bool:
+        """
+        Validate and store a transaction received from internal transaction gossip.
+        """
+        tx = Transaction(
+            sender_key=payload.sender_key,
+            data=payload.data,
+            timestamp=payload.timestamp,
+            signature=payload.signature,
+        )
+        tx_hash = tx.tx_hash()
+
+        if not tx.verify_signature():
+            print(f"Ignoring gossiped transaction with invalid signature: {tx_hash.hex()}")
+            return False
+
+        if self.mempool.contains(tx_hash):
+            return False
+
+        if self.blockchain.tx_in_canonical_chain(tx_hash):
+            return False
+
+        self.mempool.add(tx)
+        print(f"Accepted gossiped transaction: {tx_hash.hex()}")
+        return True
+
     @lazy_wrapper(BlockGossipPayload)
     def on_block_gossip(self, peer, payload: BlockGossipPayload):
         self.apply_block_gossip_payload(payload)
