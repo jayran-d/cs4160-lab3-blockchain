@@ -89,7 +89,7 @@ async def main(register: bool, test: bool) -> None:
 
     try:
 
-        # await blockchain_community.find_teammate_peers()
+        await blockchain_community.find_teammate_peers()
 
         if register:
             print("Register flag enabled. Finding server peer...")
