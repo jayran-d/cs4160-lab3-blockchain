@@ -64,9 +64,6 @@ class Blockchain:
             if not block.validate():
                 return False
 
-            if not valid_pow(block_hash, block.header.difficulty):
-                return False
-
             parent_hash = block.prev_hash()
 
             # Orphan: parent not yet known - stash for later.
