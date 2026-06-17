@@ -1,4 +1,4 @@
-from chain.transaction import Transaction
+from chain.block import Block, BlockHeader, compute_txs_hash
 from config import BLOCK_DIFFICULTY, HASH_SIZE
 
 
@@ -19,7 +19,6 @@ def count_leading_zero_bits(data: bytes) -> int:
             total += 8
             continue
 
-        # first nonzero byte
         for i in range(8):
             bit = (byte >> (7 - i)) & 1
 
@@ -53,13 +52,10 @@ def valid_pow(block_hash: bytes, difficulty: int) -> bool:
 
 def mine_block(
     prev_hash: bytes,
-    transactions: list[Transaction],
+    transactions: list,
     timestamp: int,
     difficulty: int = BLOCK_DIFFICULTY,
 ):
-
-    from chain.block import Block, BlockHeader, compute_txs_hash
-
     if len(prev_hash) != HASH_SIZE:
         raise ValueError(f"prev_hash must be exactly {HASH_SIZE} bytes")
 
@@ -76,7 +72,7 @@ def mine_block(
         )
         block = Block(header=header, transactions=transactions)
 
-        if block.validate():
+        if block.validate() and valid_pow(block.block_hash(), difficulty):
             return block
 
         nonce += 1

@@ -90,6 +90,7 @@ async def main(register: bool, test: bool) -> None:
     try:
 
         await blockchain_community.find_teammate_peers()
+        blockchain_community.start_mining()
 
         if register:
             print("Register flag enabled. Finding server peer...")
@@ -108,6 +109,7 @@ async def main(register: bool, test: bool) -> None:
         print("\nInterrupted by user. Exiting ... ")
 
     finally:
+        blockchain_community.stop_mining()
         print("Stopping IPV8\n")
         await ipv8.stop()
 

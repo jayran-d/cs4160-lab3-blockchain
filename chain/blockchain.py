@@ -4,6 +4,7 @@ from hashlib import sha256
 from chain.block import Block, create_genesis_block
 
 from chain.mempool import Mempool
+from chain.pow import valid_pow
 
 
 class Blockchain:
@@ -61,6 +62,9 @@ class Blockchain:
 
             # Validate block-internal correctness.
             if not block.validate():
+                return False
+
+            if not valid_pow(block_hash, block.header.difficulty):
                 return False
 
             parent_hash = block.prev_hash()
