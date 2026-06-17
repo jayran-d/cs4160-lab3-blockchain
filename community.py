@@ -412,20 +412,4 @@ class BlockchainCommunity(Community):
             print("Ignoring block gossip with mismatching block hash")
             return False
 
-        accepted = self.blockchain.add_block(block)
-        if accepted:
-            self.remove_canonical_transactions_from_mempool()
-
-        return accepted
-
-    def remove_canonical_transactions_from_mempool(self) -> None:
-        """
-        Remove transactions that are already included in the current canonical chain.
-        """
-        for height in range(self.blockchain.height() + 1):
-            block = self.blockchain.get_block_at_height(height)
-            if block is None:
-                continue
-
-            for tx_hash in block.tx_hashes():
-                self.mempool.remove(tx_hash)
+        return self.blockchain.add_block(block)

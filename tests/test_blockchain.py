@@ -194,3 +194,76 @@ def test_tx_in_old_fork_is_not_in_canonical_chain(fake_tx: Transaction):
 
     assert chain.tip_hash() == fork_b_block_2.block_hash()
     assert not chain.tx_in_canonical_chain(fake_tx.tx_hash())
+
+
+def test_add_block_removes_canonical_transactions_from_mempool(fake_tx: Transaction):
+    # Once a transaction is included in the canonical chain, it should not be mined again.
+    chain = Blockchain()
+    tx_hash = chain.mempool.add(fake_tx)
+    block = mine_test_block(
+        prev_hash=chain.tip_hash(),
+        transactions=[fake_tx],
+        timestamp=1,
+    )
+
+    assert chain.add_block(block)
+
+    assert not chain.mempool.contains(tx_hash)
+
+
+def test_direct_tip_append_updates_canonical_chain_without_reorg(fake_tx: Transaction):
+    # A block whose parent is the current tip should append directly to the canonical chain.
+    chain = Blockchain()
+    tx_hash = chain.mempool.add(fake_tx)
+    block = mine_test_block(
+        prev_hash=chain.tip_hash(),
+        transactions=[fake_tx],
+        timestamp=1,
+    )
+
+    assert chain.add_block(block)
+
+    assert chain.height() == 1
+    assert chain.tip_hash() == block.block_hash()
+    assert chain.get_block_at_height(1) == block
+    assert not chain.mempool.contains(tx_hash)
+
+
+def test_reorg_restores_old_chain_transactions_to_mempool(fake_tx: Transaction):
+    # Transactions from blocks that fall out of the canonical chain should be re-mineable.
+    chain = Blockchain()
+    old_chain_tx_hash = chain.mempool.add(fake_tx)
+    old_chain_block = mine_test_block(
+        prev_hash=chain.tip_hash(),
+        transactions=[fake_tx],
+        timestamp=1,
+    )
+    assert chain.add_block(old_chain_block)
+    assert not chain.mempool.contains(old_chain_tx_hash)
+
+    new_chain_tx = Transaction(
+        sender_key=b"new-sender",
+        data=b"new-data",
+        timestamp=fake_tx.timestamp + 1,
+        signature=b"new-signature",
+    )
+    new_chain_tx_hash = chain.mempool.add(new_chain_tx)
+    fork_block_1 = mine_test_block(
+        prev_hash=chain.get_block_at_height(0).block_hash(),
+        transactions=[new_chain_tx],
+        timestamp=2,
+    )
+    fork_block_2 = mine_test_block(
+        prev_hash=fork_block_1.block_hash(),
+        transactions=[],
+        timestamp=3,
+    )
+
+    assert chain.add_block(fork_block_1)
+    assert chain.mempool.contains(new_chain_tx_hash)
+
+    assert chain.add_block(fork_block_2)
+
+    assert chain.tip_hash() == fork_block_2.block_hash()
+    assert chain.mempool.contains(old_chain_tx_hash)
+    assert not chain.mempool.contains(new_chain_tx_hash)

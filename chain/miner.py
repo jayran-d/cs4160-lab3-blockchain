@@ -16,7 +16,7 @@ class Miner:
     - when to mine
     - which transactions to include
     - how to append the mined block
-    - when to remove mined transactions from the mempool
+    - when to broadcast accepted blocks
 
     Networking is injected as a callback.
     """
@@ -68,8 +68,6 @@ class Miner:
         block_added = self.blockchain.add_block(block)
         if not block_added:
             return None
-
-        self.blockchain.mempool.remove_transactions(block.transactions)
 
         if self.broadcast_block is not None:
             self.broadcast_block(block)

@@ -5,6 +5,7 @@ from chain.block import Block, create_genesis_block
 
 from chain.mempool import Mempool
 from chain.pow import valid_pow
+from chain.transaction import Transaction
 
 
 class Blockchain:
@@ -81,9 +82,13 @@ class Blockchain:
             self.blocks_by_hash[block_hash] = block
             self.height_by_hash[block_hash] = height
 
-            # Longest-chain rule.
-            if height > self.best_tip_height:
+            if parent_hash == self.best_tip_hash:
+                self._append_to_canonical_chain(block_hash, height)
+                self._remove_block_transactions_from_mempool(block)
+            elif height > self.best_tip_height:
+                old_canonical_blocks = self._canonical_blocks()
                 self._apply_longest_chain_rule(block_hash, height)
+                self._sync_mempool_after_canonical_change(old_canonical_blocks)
 
             # Process any orphan blocks that were waiting for this block as their parent.
             self._process_orphans_for_parent(block_hash)
@@ -125,6 +130,25 @@ class Blockchain:
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _append_to_canonical_chain(
+        self,
+        block_hash: bytes,
+        height: int,
+    ) -> None:
+        """
+        Append a block directly when its parent is the current canonical tip.
+        """
+        self.chain_by_height[height] = self.blocks_by_hash[block_hash]
+        self.best_tip_hash = block_hash
+        self.best_tip_height = height
+
+    def _remove_block_transactions_from_mempool(self, block: Block) -> None:
+        """
+        Remove transactions included in a newly canonical block.
+        """
+        for tx_hash in block.tx_hashes():
+            self.mempool.remove(tx_hash)
+
     def _apply_longest_chain_rule(
         self, new_tip_hash: bytes, new_tip_height: int
     ) -> None:
@@ -156,6 +180,51 @@ class Blockchain:
 
         for block in self.pending_blocks.pop(parent_hash, []):
             self.add_block(block)
+
+    def _canonical_blocks(self) -> list[Block]:
+        return [
+            self.chain_by_height[height]
+            for height in range(self.best_tip_height + 1)
+            if height in self.chain_by_height
+        ]
+
+    def _sync_mempool_after_canonical_change(
+        self,
+        old_canonical_blocks: list[Block],
+    ) -> None:
+        """
+        Restore txs from old canonical blocks that fell out of the best chain,
+        then remove txs now included in the current canonical chain.
+        """
+        new_canonical_tx_hashes = self._canonical_tx_hashes()
+        old_transactions = self._full_transactions_by_hash(old_canonical_blocks)
+
+        for tx_hash, transaction in old_transactions.items():
+            if tx_hash not in new_canonical_tx_hashes:
+                self.mempool.add(transaction)
+
+        for tx_hash in new_canonical_tx_hashes:
+            self.mempool.remove(tx_hash)
+
+    def _canonical_tx_hashes(self) -> set[bytes]:
+        tx_hashes = set()
+
+        for block in self._canonical_blocks():
+            tx_hashes.update(block.tx_hashes())
+
+        return tx_hashes
+
+    def _full_transactions_by_hash(
+        self,
+        blocks: list[Block],
+    ) -> dict[bytes, Transaction]:
+        transactions = {}
+
+        for block in blocks:
+            for transaction in block.transactions:
+                transactions[transaction.tx_hash()] = transaction
+
+        return transactions
 
     def _find_tx_height_in_chain(self, tx_hash: bytes) -> int | None:
         """Return the canonical-chain height of the block containing tx_hash."""
