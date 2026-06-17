@@ -6,3 +6,4 @@ packaging
 apispec>=6.0.0
 ipv8_rust_tunnels
 pyipv8
+pytest
