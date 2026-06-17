@@ -1,9 +1,9 @@
 aiohttp
 aiohttp_apispec>=3.0.0b1
-pytest==9.1.0
 marshmallow
 typing-extensions
 packaging
 apispec>=6.0.0
 ipv8_rust_tunnels
 pyipv8
+pytest
