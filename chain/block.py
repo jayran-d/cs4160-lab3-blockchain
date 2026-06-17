@@ -82,6 +82,12 @@ class Block:
         """
         return self.header.block_hash()
 
+    def prev_hash(self) -> bytes:
+        """
+        Return the previous block hash.
+        """
+        return self.header.prev_hash
+
     def tx_hashes(self) -> list[bytes]:
         """
         Return the list of transaction hashes in block order.
