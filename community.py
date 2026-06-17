@@ -1,8 +1,14 @@
 import asyncio
 
+from aiohttp import payload
 from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 
+from chain import block
+from chain.blockchain import Blockchain
+from chain.pretty_print import print_block
+
+from chain.transaction import Transaction
 from chain.blockchain import Blockchain
 from chain.miner import Miner
 from chain.transaction import Transaction
@@ -10,7 +16,9 @@ from payloads import (
     SubmitTransactionPayload,
     SubmitTransactionResponsePayload,
     GetChainHeightPayload,
+    ChainHeightResponsePayload,
     GetBlockPayload,
+    BlockResponsePayload,
 )
 
 from config import (
@@ -34,10 +42,8 @@ class BlockchainCommunity(Community):
         # Message handlers
         # ------------------------------------------------------------------
 
-        self.add_message_handler(SubmitTransactionPayload,
-                                 self.on_submit_transaction)
-        self.add_message_handler(GetChainHeightPayload,
-                                 self.on_get_chain_height)
+        self.add_message_handler(SubmitTransactionPayload, self.on_submit_transaction)
+        self.add_message_handler(GetChainHeightPayload, self.on_get_chain_height)
         self.add_message_handler(GetBlockPayload, self.on_get_block)
 
         # ------------------------------------------------------------------
@@ -240,25 +246,111 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     @lazy_wrapper(SubmitTransactionPayload)
     def on_submit_transaction(self, peer, payload: SubmitTransactionPayload):
-
         if not self.is_server_peer(peer):
             print("Ignoring SubmitTransaction from non-server peer")
             return
 
+        tx = Transaction(
+            sender_key=payload.sender_key,
+            data=payload.data,
+            timestamp=payload.timestamp,
+            signature=payload.signature,
+        )
+
+        tx_hash = tx.tx_hash()
+        should_broadcast = False
+
+        if not tx.verify_signature():
+            success = False
+            message = "Invalid transaction signature"
+
+            print(
+                f"Rejected transaction: invalid signature, " f"tx_hash={tx_hash.hex()}"
+            )
+
+        elif self.blockchain.mempool.contains(tx_hash):
+            success = True
+            message = "Transaction already in mempool"
+
+            print(f"Duplicate transaction already in mempool: {tx_hash.hex()}")
+
+        elif self.blockchain.tx_in_canonical_chain(tx_hash):
+            success = True
+            message = "Transaction already included in best chain"
+
+            print(f"Transaction already in best chain: {tx_hash.hex()}")
+
+        else:
+            self.blockchain.mempool.add(tx)
+
+            success = True
+            message = "Transaction accepted into mempool"
+            should_broadcast = True
+
+            print(f"Accepted transaction: {tx_hash.hex()}")
+            print(f"Mempool size: {len(self.blockchain.mempool)}")
+
+        response = SubmitTransactionResponsePayload(
+            success=success,
+            tx_hash=tx_hash,
+            message=message,
+        )
+
+        self.ez_send(peer, response)
+
+        if should_broadcast:
+            # Share transaction with teammates.
+            self.broadcast_to_teammates(tx)
+            print("Broadcasted submitted transaction to teammates")
 
     @lazy_wrapper(GetChainHeightPayload)
     def on_get_chain_height(self, peer, payload: GetChainHeightPayload):
-
         if not self.is_server_peer(peer):
             print("Ignoring GetChainHeight from non-server peer")
             return
 
+        height = self.blockchain.height()
+        tip_hash = self.blockchain.tip_hash()
+
+        response = ChainHeightResponsePayload(
+            request_id=payload.request_id,
+            height=height,
+            tip_hash=tip_hash,
+        )
+
+        self.ez_send(peer, response)
+
+        print(
+            f"Sent chain height to server: request_id={payload.request_id}, height={height}, tip_hash={tip_hash.hex()}"
+        )
+
     @lazy_wrapper(GetBlockPayload)
     def on_get_block(self, peer, payload: GetBlockPayload):
-
         if not self.is_server_peer(peer):
             print("Ignoring GetBlock from non-server peer")
             return
+
+        block = self.blockchain.get_block_at_height(payload.height)
+
+        if block is None:
+            print(f"Requested block not found: height={payload.height}")
+            return
+
+        response = BlockResponsePayload(
+            height=payload.height,
+            prev_hash=block.prev_hash(),
+            txs_hash=block.header.txs_hash,
+            timestamp=block.header.timestamp,
+            difficulty=block.header.difficulty,
+            nonce=block.header.nonce,
+            block_hash=block.block_hash(),
+            tx_hashes=block.tx_hashes_bytes(),
+        )
+
+        self.ez_send(peer, response)
+
+        print("Sent block to server:")
+        print_block(block, height=payload.height)
 
     # ----------------------------------------------------------------------
     # Internal teammate message handlers
