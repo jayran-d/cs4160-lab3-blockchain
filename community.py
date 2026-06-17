@@ -3,13 +3,14 @@ import asyncio
 from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 
+from chain.blockchain import Blockchain
+from chain.miner import Miner
+from chain.transaction import Transaction
 from payloads import (
     SubmitTransactionPayload,
     SubmitTransactionResponsePayload,
     GetChainHeightPayload,
-    ChainHeightResponsePayload,
     GetBlockPayload,
-    BlockResponsePayload,
 )
 
 from config import (
@@ -58,7 +59,17 @@ class BlockchainCommunity(Community):
             for name, public_key_hex in MEMBER_PUBLIC_KEYS_HEX.items()
         }
 
-        # TODO: Add blockchain, mempool, and miner state here.
+        # ------------------------------------------------------------------
+        # Local blockchain state
+        # ------------------------------------------------------------------
+        self.blockchain = Blockchain()
+        self.mempool = self.blockchain.mempool
+        self.miner = Miner(
+            blockchain=self.blockchain,
+            mempool=self.mempool,
+            community=self,
+        )
+        self.mining_task: asyncio.Task | None = None
 
     # ----------------------------------------------------------------------
     # Peer and key helper methods
@@ -197,7 +208,32 @@ class BlockchainCommunity(Community):
         Send a payload to all currently discovered teammates.
         """
         for teammate_peer in self.teammate_peers.values():
+            if teammate_peer is None:
+                continue
+
             self.ez_send(teammate_peer, payload)
+
+    # ----------------------------------------------------------------------
+    # Miner lifecycle
+    # ----------------------------------------------------------------------
+
+    def start_mining(self) -> None:
+        """
+        Start the background mining loop once.
+        """
+        if self.mining_task is not None and not self.mining_task.done():
+            return
+
+        self.mining_task = asyncio.create_task(self.miner.run_forever())
+
+    def stop_mining(self) -> None:
+        """
+        Stop the background mining loop.
+        """
+        self.miner.stop()
+
+        if self.mining_task is not None:
+            self.mining_task.cancel()
 
     # ----------------------------------------------------------------------
     # Lab server query message handlers
@@ -208,6 +244,7 @@ class BlockchainCommunity(Community):
         if not self.is_server_peer(peer):
             print("Ignoring SubmitTransaction from non-server peer")
             return
+
 
     @lazy_wrapper(GetChainHeightPayload)
     def on_get_chain_height(self, peer, payload: GetChainHeightPayload):
