@@ -1,8 +1,7 @@
 from chain.block import Block, BlockHeader, compute_txs_hash
 from chain.transaction import Transaction
 
-BLOCK_DIFFICULTY = 8
-HASH_SIZE = 32
+from config import BLOCK_DIFFICULTY, HASH_SIZE
 
 def count_leading_zero_bits(data: bytes) -> int:
     """

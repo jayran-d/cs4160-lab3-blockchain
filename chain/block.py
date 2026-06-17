@@ -12,27 +12,6 @@ txs_hash      -> single bytes commitment -> sha256(tx1 + tx2 + ... + txn)
 """
 
 
-def compute_txs_hash(tx_hashes: list[bytes]) -> bytes:
-    """
-    Compute the block body commitment.
-
-    The lab requires:
-
-        txs_hash = SHA256(tx_hash_1 || tx_hash_2 || ... || tx_hash_n)
-
-    For an empty block:
-
-        txs_hash = SHA256(b"")
-
-    Since b"".join([]) is b"", this works for both normal and empty blocks.
-    """
-
-    if len(tx_hashes) == 0:
-        return sha256(b"")
-
-    return sha256(b"".join(tx_hashes))
-
-
 @dataclass
 class BlockHeader:
     """
@@ -145,6 +124,26 @@ class Block:
 
         return True
 
+
+def compute_txs_hash(tx_hashes: list[bytes]) -> bytes:
+    """
+    Compute the block body commitment.
+
+    The lab requires:
+
+        txs_hash = SHA256(tx_hash_1 || tx_hash_2 || ... || tx_hash_n)
+
+    For an empty block:
+
+        txs_hash = SHA256(b"")
+
+    Since b"".join([]) is b"", this works for both normal and empty blocks.
+    """
+
+    if len(tx_hashes) == 0:
+        return sha256(b"")
+
+    return sha256(b"".join(tx_hashes))
 
 
 def create_genesis_block() -> Block:
