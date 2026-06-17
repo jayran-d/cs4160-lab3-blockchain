@@ -2,7 +2,12 @@ import argparse
 import asyncio
 import logging
 
-from ipv8.configuration import ConfigBuilder, Strategy, WalkerDefinition, default_bootstrap_defs
+from ipv8.configuration import (
+    ConfigBuilder,
+    Strategy,
+    WalkerDefinition,
+    default_bootstrap_defs,
+)
 from ipv8_service import IPv8
 from ipv8.util import run_forever
 
@@ -12,15 +17,13 @@ from config import KEY_FILE
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Run Lab 3 PoW blockchain IPv8 node.")
+    parser = argparse.ArgumentParser(description="Run Lab 3 PoW blockchain IPv8 node.")
 
     parser.add_argument(
         "-r",
         "--register",
         action="store_true",
-        help=
-        "Register the blockchain community with the Lab 3 server before running.",
+        help="Register the blockchain community with the Lab 3 server before running.",
     )
 
     parser.add_argument(
@@ -79,10 +82,10 @@ async def main(register: bool, test: bool) -> None:
     await ipv8.start()
 
     register_community: Lab3RegistrationCommunity = ipv8.get_overlay(
-        Lab3RegistrationCommunity)
+        Lab3RegistrationCommunity
+    )
 
-    blockchain_community: BlockchainCommunity = ipv8.get_overlay(
-        BlockchainCommunity)
+    blockchain_community: BlockchainCommunity = ipv8.get_overlay(BlockchainCommunity)
 
     try:
 
@@ -96,13 +99,16 @@ async def main(register: bool, test: bool) -> None:
             register_community.register_blockchain()
 
         if test:
-            #Implement test logic
+            # Implement test logic
             pass
 
         await run_forever()
 
-    finally:
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("\nInterrupted by user. Exiting ... ")
 
+    finally:
+        print("Stopping IPV8\n")
         await ipv8.stop()
 
 
