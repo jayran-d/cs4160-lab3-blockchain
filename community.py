@@ -16,7 +16,9 @@ from payloads import (
     SubmitTransactionPayload,
     SubmitTransactionResponsePayload,
     GetChainHeightPayload,
+    ChainHeightResponsePayload,
     GetBlockPayload,
+    BlockResponsePayload,
 )
 
 from config import (
