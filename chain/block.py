@@ -159,7 +159,7 @@ def split_tx_hashes(tx_hashes: bytes) -> list[bytes]:
         raise ValueError("tx_hashes must be a multiple of 32 bytes")
 
     return [
-        tx_hashes[index:index + HASH_SIZE]
+        tx_hashes[index : index + HASH_SIZE]
         for index in range(0, len(tx_hashes), HASH_SIZE)
     ]
 
