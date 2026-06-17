@@ -1,3 +1,9 @@
+from chain.block import Block, BlockHeader, compute_txs_hash
+from chain.transaction import Transaction
+
+BLOCK_DIFFICULTY = 8
+HASH_SIZE = 32
+
 def count_leading_zero_bits(data: bytes) -> int:
     """
     Count the number of leading zero bits in a byte string.
@@ -34,8 +40,8 @@ def valid_pow(block_hash: bytes, difficulty: int) -> bool:
     Difficulty means:
         required number of leading zero bits in block_hash
     """
-    if len(block_hash) != 32:
-        print(f"Invalid block hash length: {len(block_hash)}. Expected 32 bytes.")
+    if len(block_hash) != HASH_SIZE:
+        print(f"Invalid block hash length: {len(block_hash)}. Expected {HASH_SIZE} bytes.")
         return False
 
     if difficulty < 0 or difficulty > 256:
@@ -43,3 +49,30 @@ def valid_pow(block_hash: bytes, difficulty: int) -> bool:
         return False
 
     return count_leading_zero_bits(block_hash) >= difficulty
+
+def mine_block(
+    prev_hash: bytes,
+    transactions: list[Transaction],
+    timestamp: int,
+    difficulty: int = BLOCK_DIFFICULTY,
+) -> Block:
+    if len(prev_hash) != HASH_SIZE:
+        raise ValueError(f"prev_hash must be exactly {HASH_SIZE} bytes")
+
+    txs_hash = compute_txs_hash([tx.tx_hash() for tx in transactions])
+    nonce = 0
+
+    while True:
+        header = BlockHeader(
+            prev_hash=prev_hash,
+            txs_hash=txs_hash,
+            timestamp=timestamp,
+            difficulty=difficulty,
+            nonce=nonce,
+        )
+        block = Block(header=header, transactions=transactions)
+
+        if block.validate():
+            return block
+
+        nonce += 1
