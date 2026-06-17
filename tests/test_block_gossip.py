@@ -1,6 +1,7 @@
 from chain.block import BlockHeader
 from chain.blockchain import Blockchain
 from chain.pow import mine_block
+from chain.transaction import Transaction
 from community import BlockchainCommunity
 from config import BLOCK_DIFFICULTY, HASH_SIZE
 from payloads import BlockGossipPayload
@@ -111,3 +112,75 @@ def test_block_gossip_rejects_malformed_tx_hashes(fake_tx):
     assert not accepted
     assert community.blockchain.height() == 0
     assert community.mempool.contains(fake_tx.tx_hash())
+
+
+def test_equal_height_fork_is_stored_but_not_canonical(fake_tx):
+    # A valid side fork should be remembered, but it should not replace an equal-height tip.
+    community = make_test_community()
+    current_tip = mine_block(
+        prev_hash=community.blockchain.tip_hash(),
+        transactions=[],
+        timestamp=1,
+        difficulty=BLOCK_DIFFICULTY,
+    )
+    assert community.blockchain.add_block(current_tip)
+
+    tx_hash = community.mempool.add(fake_tx)
+    fork_block = mine_block(
+        prev_hash=community.blockchain.get_block_at_height(0).block_hash(),
+        transactions=[fake_tx],
+        timestamp=2,
+        difficulty=BLOCK_DIFFICULTY,
+    )
+
+    accepted = community.apply_block_gossip_payload(make_payload(fork_block))
+
+    assert accepted
+    assert fork_block.block_hash() in community.blockchain.blocks_by_hash
+    assert community.blockchain.tip_hash() == current_tip.block_hash()
+    assert community.mempool.contains(tx_hash)
+
+
+def test_longer_gossiped_fork_becomes_canonical_and_cleans_mempool(fake_tx):
+    # Once a fork becomes longer, Blockchain switches the canonical chain to it.
+    community = make_test_community()
+    genesis_hash = community.blockchain.tip_hash()
+    current_tip = mine_block(
+        prev_hash=genesis_hash,
+        transactions=[],
+        timestamp=1,
+        difficulty=BLOCK_DIFFICULTY,
+    )
+    assert community.blockchain.add_block(current_tip)
+
+    second_tx = Transaction(
+        sender_key=b"second-sender",
+        data=b"second-data",
+        timestamp=fake_tx.timestamp + 1,
+        signature=b"second-signature",
+    )
+    fake_tx_hash = community.mempool.add(fake_tx)
+    second_tx_hash = community.mempool.add(second_tx)
+
+    fork_block = mine_block(
+        prev_hash=genesis_hash,
+        transactions=[fake_tx],
+        timestamp=2,
+        difficulty=BLOCK_DIFFICULTY,
+    )
+    fork_child = mine_block(
+        prev_hash=fork_block.block_hash(),
+        transactions=[second_tx],
+        timestamp=3,
+        difficulty=BLOCK_DIFFICULTY,
+    )
+
+    assert community.apply_block_gossip_payload(make_payload(fork_block))
+    assert community.blockchain.tip_hash() == current_tip.block_hash()
+
+    assert community.apply_block_gossip_payload(make_payload(fork_child))
+
+    assert community.blockchain.tip_hash() == fork_child.block_hash()
+    assert community.blockchain.get_block_at_height(1).block_hash() == fork_block.block_hash()
+    assert not community.mempool.contains(fake_tx_hash)
+    assert not community.mempool.contains(second_tx_hash)
