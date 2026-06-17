@@ -1,3 +1,4 @@
+from chain.pow import valid_pow
 from chain.utils import sha256, u64_be, u32_be
 from chain.transaction import Transaction
 from dataclasses import dataclass
@@ -108,9 +109,10 @@ class Block:
         - prev_hash has correct size
         - txs_hash has correct size
         - txs_hash matches the included transactions
+        - block hash satisfies declared PoW difficulty
 
         This does NOT check whether the block links to a previous block.
-        Chain-link and PoW validation should be done when appending to the chain.
+        Chain-link validation should be done when appending to the chain.
         """
         if len(self.header.prev_hash) != HASH_SIZE:
             return False
@@ -121,6 +123,9 @@ class Block:
         expected_txs_hash = compute_txs_hash(self.tx_hashes())
 
         if expected_txs_hash != self.header.txs_hash:
+            return False
+
+        if not valid_pow(self.block_hash(), self.header.difficulty):
             return False
 
         return True

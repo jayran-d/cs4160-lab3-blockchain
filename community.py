@@ -69,11 +69,9 @@ class BlockchainCommunity(Community):
         # Local blockchain state
         # ------------------------------------------------------------------
         self.blockchain = Blockchain()
-        self.mempool = self.blockchain.mempool
         self.miner = Miner(
             blockchain=self.blockchain,
-            mempool=self.mempool,
-            community=self,
+            broadcast_block=self.broadcast_block_to_teammates,
         )
         self.mining_task: asyncio.Task | None = None
 
@@ -208,6 +206,21 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     # Broadcast helper methods
     # ----------------------------------------------------------------------
+
+    def broadcast_block_to_teammates(self, block) -> None:
+        pass
+        # payload = BlockBroadcastPayload(
+        #     height=self.blockchain.height(),
+        #     prev_hash=block.prev_hash(),
+        #     txs_hash=block.header.txs_hash,
+        #     timestamp=block.header.timestamp,
+        #     difficulty=block.header.difficulty,
+        #     nonce=block.header.nonce,
+        #     block_hash=block.block_hash(),
+        #     tx_hashes=block.tx_hashes_bytes(),
+        # )
+
+        # self.broadcast_to_teammates(payload)
 
     def broadcast_to_teammates(self, payload) -> None:
         """
