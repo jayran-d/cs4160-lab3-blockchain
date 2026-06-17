@@ -117,6 +117,10 @@ class Blockchain:
 
             return self.best_tip_height >= tx_block_height + confirmations
 
+    def tx_in_canonical_chain(self, tx_hash: bytes) -> bool:
+        with self.lock:
+            return self._find_tx_height_in_chain(tx_hash) is not None
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

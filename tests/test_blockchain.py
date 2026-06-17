@@ -138,3 +138,59 @@ def test_confirmations(fake_tx: Transaction):
 
     # Now the transaction should have 3 confirmations.
     assert chain.tx_confirmed(fake_tx.tx_hash())
+
+def test_tx_in_canonical_chain(fake_tx: Transaction):
+    # A transaction should only count as being in the chain after its block is accepted.
+    chain = Blockchain()
+
+    assert not chain.tx_in_canonical_chain(fake_tx.tx_hash())
+
+    block = mine_test_block(
+        prev_hash=chain.tip_hash(),
+        transactions=[fake_tx],
+        timestamp=1,
+    )
+
+    assert chain.add_block(block)
+    assert chain.tx_in_canonical_chain(fake_tx.tx_hash())
+    
+    
+def test_tx_in_mempool_is_not_in_canonical_chain(fake_tx: Transaction):
+    # A transaction in the mempool is not yet part of the canonical blockchain.
+    chain = Blockchain()
+
+    chain.mempool.add(fake_tx)
+
+    assert not chain.tx_in_canonical_chain(fake_tx.tx_hash())
+    
+def test_tx_in_old_fork_is_not_in_canonical_chain(fake_tx: Transaction):
+    # A transaction in an old fork should not count after the chain switches forks.
+    chain = Blockchain()
+
+    fork_a_block = mine_test_block(
+        prev_hash=chain.tip_hash(),
+        transactions=[fake_tx],
+        timestamp=1,
+    )
+
+    fork_b_block_1 = mine_test_block(
+        prev_hash=chain.tip_hash(),
+        transactions=[],
+        timestamp=2,
+    )
+
+    assert chain.add_block(fork_a_block)
+    assert chain.tx_in_canonical_chain(fake_tx.tx_hash())
+
+    assert chain.add_block(fork_b_block_1)
+
+    fork_b_block_2 = mine_test_block(
+        prev_hash=fork_b_block_1.block_hash(),
+        transactions=[],
+        timestamp=3,
+    )
+
+    assert chain.add_block(fork_b_block_2)
+
+    assert chain.tip_hash() == fork_b_block_2.block_hash()
+    assert not chain.tx_in_canonical_chain(fake_tx.tx_hash())
