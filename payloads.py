@@ -108,3 +108,17 @@ class BlockGossipPayload(DataClassPayloadWID):
     nonce: int
     block_hash: bytes
     tx_hashes: bytes
+
+
+@dataclass
+class TransactionGossipPayload(DataClassPayloadWID):
+
+    msg_id = 8
+
+    format_list = ["varlenH", "varlenH", "q", "varlenH"]
+    names = ["sender_key", "data", "timestamp", "signature"]
+
+    sender_key: bytes
+    data: bytes
+    timestamp: int
+    signature: bytes
