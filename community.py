@@ -3,6 +3,7 @@ import asyncio
 from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 
+from chain.block import Block, BlockHeader, split_tx_hashes
 from chain.blockchain import Blockchain
 from chain.miner import Miner
 from chain.transaction import Transaction
@@ -11,6 +12,7 @@ from payloads import (
     SubmitTransactionResponsePayload,
     GetChainHeightPayload,
     GetBlockPayload,
+    BlockGossipPayload,
 )
 
 from config import (
@@ -39,6 +41,7 @@ class BlockchainCommunity(Community):
         self.add_message_handler(GetChainHeightPayload,
                                  self.on_get_chain_height)
         self.add_message_handler(GetBlockPayload, self.on_get_block)
+        self.add_message_handler(BlockGossipPayload, self.on_block_gossip)
 
         # ------------------------------------------------------------------
         # Known peers
@@ -213,6 +216,21 @@ class BlockchainCommunity(Community):
 
             self.ez_send(teammate_peer, payload)
 
+    def broadcast_block_to_teammates(self, block: Block) -> None:
+        """
+        Send a locally mined block to known teammates.
+        """
+        payload = BlockGossipPayload(
+            prev_hash=block.header.prev_hash,
+            txs_hash=block.header.txs_hash,
+            timestamp=block.header.timestamp,
+            difficulty=block.header.difficulty,
+            nonce=block.header.nonce,
+            block_hash=block.block_hash(),
+            tx_hashes=block.tx_hashes_bytes(),
+        )
+        self.broadcast_to_teammates(payload)
+
     # ----------------------------------------------------------------------
     # Miner lifecycle
     # ----------------------------------------------------------------------
@@ -263,3 +281,31 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     # Internal teammate message handlers
     # ----------------------------------------------------------------------
+    @lazy_wrapper(BlockGossipPayload)
+    def on_block_gossip(self, peer, payload: BlockGossipPayload):
+        try:
+            tx_hashes = split_tx_hashes(payload.tx_hashes)
+        except ValueError as error:
+            print(f"Ignoring malformed block gossip: {error}")
+            return
+
+        block = Block(
+            header=BlockHeader(
+                prev_hash=payload.prev_hash,
+                txs_hash=payload.txs_hash,
+                timestamp=payload.timestamp,
+                difficulty=payload.difficulty,
+                nonce=payload.nonce,
+            ),
+            transactions=[],
+            transaction_hashes=tx_hashes,
+        )
+
+        if block.block_hash() != payload.block_hash:
+            print("Ignoring block gossip with mismatching block hash")
+            return
+
+        accepted = self.blockchain.add_block(block)
+        if accepted:
+            for tx_hash in block.tx_hashes():
+                self.mempool.remove(tx_hash)

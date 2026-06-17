@@ -68,12 +68,13 @@ class Block:
     - a header
     - the transactions included in the block
 
-    Internally we keep full Transaction objects because that makes validation easy.
-    When responding to the server, we only send concatenated transaction hashes.
+    Locally mined blocks keep full Transaction objects. Blocks received from
+    teammates may only carry transaction hashes, which is enough for lab grading.
     """
 
     header: BlockHeader
     transactions: list[Transaction]
+    transaction_hashes: list[bytes] | None = None
 
     def block_hash(self) -> bytes:
         """
@@ -91,6 +92,9 @@ class Block:
         """
         Return the list of transaction hashes in block order.
         """
+        if self.transaction_hashes is not None:
+            return self.transaction_hashes
+
         return [tx.tx_hash() for tx in self.transactions]
 
     def tx_hashes_bytes(self) -> bytes:
@@ -145,6 +149,19 @@ def compute_txs_hash(tx_hashes: list[bytes]) -> bytes:
         return sha256(b"")
 
     return sha256(b"".join(tx_hashes))
+
+
+def split_tx_hashes(tx_hashes: bytes) -> list[bytes]:
+    """
+    Split concatenated 32-byte transaction hashes from a block payload.
+    """
+    if len(tx_hashes) % HASH_SIZE != 0:
+        raise ValueError("tx_hashes must be a multiple of 32 bytes")
+
+    return [
+        tx_hashes[index:index + HASH_SIZE]
+        for index in range(0, len(tx_hashes), HASH_SIZE)
+    ]
 
 
 def create_genesis_block() -> Block:
