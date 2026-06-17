@@ -1,4 +1,4 @@
-from chain.block import compute_txs_hash, create_genesis_block
+from chain.block import compute_txs_hash, create_genesis_block, split_tx_hashes
 from chain.pow import mine_block
 from chain.utils import sha256
 from chain.transaction import Transaction
@@ -86,6 +86,43 @@ def test_txs_hash_nonempty(fake_tx: Transaction):
     expected = sha256(tx_hash)
 
     assert compute_txs_hash([tx_hash]) == expected
+
+
+def test_split_tx_hashes():
+    # Internal block gossip carries concatenated transaction hashes.
+    tx_hash_1 = b"\x01" * HASH_SIZE
+    tx_hash_2 = b"\x02" * HASH_SIZE
+
+    assert split_tx_hashes(tx_hash_1 + tx_hash_2) == [tx_hash_1, tx_hash_2]
+
+
+def test_split_tx_hashes_rejects_malformed_length():
+    # Transaction hashes must be complete 32-byte chunks.
+    try:
+        split_tx_hashes(b"\x01" * (HASH_SIZE - 1))
+    except ValueError:
+        return
+
+    raise AssertionError("Expected ValueError for malformed tx_hashes")
+
+
+def test_hash_only_block_is_valid(fake_tx: Transaction):
+    # A received block can be validated from transaction hashes without full transactions.
+    tx_hash = fake_tx.tx_hash()
+    header = BlockHeader(
+        prev_hash=b"\x00" * HASH_SIZE,
+        txs_hash=compute_txs_hash([tx_hash]),
+        timestamp=1,
+        difficulty=0,
+        nonce=0,
+    )
+    block = Block(
+        header=header,
+        transactions=[],
+        transaction_hashes=[tx_hash],
+    )
+
+    assert block.validate()
 
 
 def test_header_encoding_is_84_bytes():

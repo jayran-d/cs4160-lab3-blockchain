@@ -160,7 +160,7 @@ class Blockchain:
         for height in range(self.best_tip_height + 1):
             block = self.chain_by_height.get(height)
 
-            if block and any(tx.tx_hash() == tx_hash for tx in block.transactions):
+            if block and tx_hash in block.tx_hashes():
                 return height
 
         return None

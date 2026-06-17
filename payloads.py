@@ -86,3 +86,25 @@ class BlockResponsePayload(DataClassPayloadWID):
     nonce: int
     block_hash: bytes
     tx_hashes: bytes
+
+
+@dataclass
+class BlockGossipPayload(DataClassPayloadWID):
+
+    msg_id = 7
+
+    format_list = [
+        "varlenH", "varlenH", "q", "q", "q", "varlenH", "varlenH"
+    ]
+    names = [
+        "prev_hash", "txs_hash", "timestamp", "difficulty", "nonce",
+        "block_hash", "tx_hashes"
+    ]
+
+    prev_hash: bytes
+    txs_hash: bytes
+    timestamp: int
+    difficulty: int
+    nonce: int
+    block_hash: bytes
+    tx_hashes: bytes

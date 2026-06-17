@@ -1,15 +1,11 @@
 import asyncio
 
-from aiohttp import payload
 from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 
-from chain import block
+from chain.block import Block, BlockHeader, split_tx_hashes
 from chain.blockchain import Blockchain
 from chain.pretty_print import print_block
-
-from chain.transaction import Transaction
-from chain.blockchain import Blockchain
 from chain.miner import Miner
 from chain.transaction import Transaction
 from payloads import (
@@ -19,6 +15,7 @@ from payloads import (
     ChainHeightResponsePayload,
     GetBlockPayload,
     BlockResponsePayload,
+    BlockGossipPayload,
 )
 
 from config import (
@@ -45,6 +42,7 @@ class BlockchainCommunity(Community):
         self.add_message_handler(SubmitTransactionPayload, self.on_submit_transaction)
         self.add_message_handler(GetChainHeightPayload, self.on_get_chain_height)
         self.add_message_handler(GetBlockPayload, self.on_get_block)
+        self.add_message_handler(BlockGossipPayload, self.on_block_gossip)
 
         # ------------------------------------------------------------------
         # Known peers
@@ -232,6 +230,33 @@ class BlockchainCommunity(Community):
 
             self.ez_send(teammate_peer, payload)
 
+    def broadcast_block_to_teammates(self, block: Block) -> None:
+        """
+        Send a locally mined block to known teammates.
+        """
+        payload = BlockGossipPayload(
+            prev_hash=block.header.prev_hash,
+            txs_hash=block.header.txs_hash,
+            timestamp=block.header.timestamp,
+            difficulty=block.header.difficulty,
+            nonce=block.header.nonce,
+            block_hash=block.block_hash(),
+            tx_hashes=block.tx_hashes_bytes(),
+        )
+        self.broadcast_to_teammates(payload)
+
+    def broadcast_transaction_to_teammates(self, transaction: Transaction) -> None:
+        """
+        Share a server-submitted transaction with teammates.
+        """
+        payload = SubmitTransactionPayload(
+            sender_key=transaction.sender_key,
+            data=transaction.data,
+            timestamp=transaction.timestamp,
+            signature=transaction.signature,
+        )
+        self.broadcast_to_teammates(payload)
+
     # ----------------------------------------------------------------------
     # Miner lifecycle
     # ----------------------------------------------------------------------
@@ -259,8 +284,11 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     @lazy_wrapper(SubmitTransactionPayload)
     def on_submit_transaction(self, peer, payload: SubmitTransactionPayload):
-        if not self.is_server_peer(peer):
-            print("Ignoring SubmitTransaction from non-server peer")
+        is_server = self.is_server_peer(peer)
+        is_teammate = self.is_teammate_peer(peer)
+
+        if not is_server and not is_teammate:
+            print("Ignoring SubmitTransaction from unknown peer")
             return
 
         tx = Transaction(
@@ -298,22 +326,23 @@ class BlockchainCommunity(Community):
 
             success = True
             message = "Transaction accepted into mempool"
-            should_broadcast = True
+            should_broadcast = is_server
 
             print(f"Accepted transaction: {tx_hash.hex()}")
             print(f"Mempool size: {len(self.blockchain.mempool)}")
 
-        response = SubmitTransactionResponsePayload(
-            success=success,
-            tx_hash=tx_hash,
-            message=message,
-        )
+        if is_server:
+            response = SubmitTransactionResponsePayload(
+                success=success,
+                tx_hash=tx_hash,
+                message=message,
+            )
 
-        self.ez_send(peer, response)
+            self.ez_send(peer, response)
 
         if should_broadcast:
             # Share transaction with teammates.
-            self.broadcast_to_teammates(tx)
+            self.broadcast_transaction_to_teammates(tx)
             print("Broadcasted submitted transaction to teammates")
 
     @lazy_wrapper(GetChainHeightPayload)
@@ -368,3 +397,50 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     # Internal teammate message handlers
     # ----------------------------------------------------------------------
+    @lazy_wrapper(BlockGossipPayload)
+    def on_block_gossip(self, peer, payload: BlockGossipPayload):
+        self.apply_block_gossip_payload(payload)
+
+    def apply_block_gossip_payload(self, payload: BlockGossipPayload) -> bool:
+        """
+        Validate and apply a block received from internal block gossip.
+        """
+        try:
+            tx_hashes = split_tx_hashes(payload.tx_hashes)
+        except ValueError as error:
+            print(f"Ignoring malformed block gossip: {error}")
+            return False
+
+        block = Block(
+            header=BlockHeader(
+                prev_hash=payload.prev_hash,
+                txs_hash=payload.txs_hash,
+                timestamp=payload.timestamp,
+                difficulty=payload.difficulty,
+                nonce=payload.nonce,
+            ),
+            transactions=[],
+            transaction_hashes=tx_hashes,
+        )
+
+        if block.block_hash() != payload.block_hash:
+            print("Ignoring block gossip with mismatching block hash")
+            return False
+
+        accepted = self.blockchain.add_block(block)
+        if accepted:
+            self.remove_canonical_transactions_from_mempool()
+
+        return accepted
+
+    def remove_canonical_transactions_from_mempool(self) -> None:
+        """
+        Remove transactions that are already included in the current canonical chain.
+        """
+        for height in range(self.blockchain.height() + 1):
+            block = self.blockchain.get_block_at_height(height)
+            if block is None:
+                continue
+
+            for tx_hash in block.tx_hashes():
+                self.mempool.remove(tx_hash)
