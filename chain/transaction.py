@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from chain.crypto import sha256, u64_be
+from chain.utils import sha256, u64_be
 from ipv8.keyvault.crypto import ECCrypto
 
 

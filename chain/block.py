@@ -121,8 +121,7 @@ class Block:
         if expected_txs_hash != self.header.txs_hash:
             return False
 
-        return valid_pow(self.header.block_hash(), self.header.difficulty):
-
+        return valid_pow(self.header.block_hash(), self.header.difficulty)
 
 
 def create_genesis_block() -> Block:
