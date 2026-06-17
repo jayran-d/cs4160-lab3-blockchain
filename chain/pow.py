@@ -1,6 +1,5 @@
-from chain.transaction import Transaction
-from config import BLOCK_DIFFICULTY, HASH_SIZE
 from chain.block import Block, BlockHeader, compute_txs_hash
+from config import BLOCK_DIFFICULTY, HASH_SIZE
 
 
 def count_leading_zero_bits(data: bytes) -> int:
@@ -20,7 +19,6 @@ def count_leading_zero_bits(data: bytes) -> int:
             total += 8
             continue
 
-        # first nonzero byte
         for i in range(8):
             bit = (byte >> (7 - i)) & 1
 
@@ -74,7 +72,7 @@ def mine_block(
         )
         block = Block(header=header, transactions=transactions)
 
-        if block.validate():
+        if block.validate() and valid_pow(block.block_hash(), difficulty):
             return block
 
         nonce += 1

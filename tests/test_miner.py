@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import Mock
 
-from chain.block import Block, create_genesis_block
+from chain.blockchain import Blockchain
 from chain.mempool import Mempool
 from chain.miner import Miner
 from chain.transaction import Transaction
@@ -15,76 +16,63 @@ def make_tx(data: bytes = b"data") -> Transaction:
     )
 
 
-class FakeBlockchain:
-    def __init__(self, should_accept: bool = True):
-        self.blocks = [create_genesis_block()]
-        self.should_accept = should_accept
-
-    def tip_hash(self) -> bytes:
-        return self.blocks[-1].block_hash()
-
-    def append_block(self, block: Block) -> bool:
-        if not self.should_accept:
-            return False
-
-        self.blocks.append(block)
-        return True
-
-
-class FakeCommunity:
-    def __init__(self):
-        self.broadcasted_blocks = []
-
-    def broadcast_block_to_teammates(self, block: Block) -> None:
-        self.broadcasted_blocks.append(block)
-
-
 class MinerTests(unittest.TestCase):
-    def test_mine_once_appends_block_on_current_tip(self) -> None:
-        blockchain = FakeBlockchain()
-        mempool = Mempool()
+    def test_mine_once_adds_block_on_current_blockchain_tip(self) -> None:
+        # The miner should mine on top of the current canonical blockchain tip.
+        blockchain = Blockchain()
         previous_tip_hash = blockchain.tip_hash()
-        miner = Miner(blockchain=blockchain, mempool=mempool, difficulty=4)
+        miner = Miner(
+            blockchain=blockchain,
+            mempool=blockchain.mempool,
+            difficulty=4,
+        )
 
         block = miner.mine_once()
 
         self.assertIsNotNone(block)
         self.assertEqual(block.header.prev_hash, previous_tip_hash)
-        self.assertEqual(blockchain.blocks[-1], block)
-        self.assertEqual(len(blockchain.blocks), 2)
+        self.assertEqual(blockchain.tip(), block)
+        self.assertEqual(blockchain.height(), 1)
 
     def test_mine_once_includes_and_removes_mempool_transactions(self) -> None:
-        blockchain = FakeBlockchain()
-        mempool = Mempool()
+        # Transactions included in an accepted block should leave the mempool.
+        blockchain = Blockchain()
         included_tx = make_tx(b"included")
-        mempool.add(included_tx)
-        miner = Miner(blockchain=blockchain, mempool=mempool, difficulty=4)
+        blockchain.mempool.add(included_tx)
+        miner = Miner(
+            blockchain=blockchain,
+            mempool=blockchain.mempool,
+            difficulty=4,
+        )
 
         block = miner.mine_once()
 
         self.assertIsNotNone(block)
         self.assertEqual(block.transactions, [included_tx])
-        self.assertEqual(len(mempool), 0)
+        self.assertEqual(len(blockchain.mempool), 0)
 
     def test_mine_once_broadcasts_accepted_block_when_community_exists(self) -> None:
-        blockchain = FakeBlockchain()
-        mempool = Mempool()
-        community = FakeCommunity()
+        # After local acceptance, the mined block should be sent to teammates.
+        blockchain = Blockchain()
+        community = Mock()
         miner = Miner(
             blockchain=blockchain,
-            mempool=mempool,
+            mempool=blockchain.mempool,
             difficulty=4,
             community=community,
         )
 
         block = miner.mine_once()
 
-        self.assertEqual(community.broadcasted_blocks, [block])
+        community.broadcast_block_to_teammates.assert_called_once_with(block)
 
     def test_mine_once_does_not_cleanup_or_broadcast_rejected_block(self) -> None:
-        blockchain = FakeBlockchain(should_accept=False)
+        # If the blockchain rejects a block, the miner must not lose transactions.
+        blockchain = Mock()
+        blockchain.tip_hash.return_value = b"\x00" * 32
+        blockchain.add_block.return_value = False
         mempool = Mempool()
-        community = FakeCommunity()
+        community = Mock()
         tx = make_tx()
         mempool.add(tx)
         miner = Miner(
@@ -98,19 +86,19 @@ class MinerTests(unittest.TestCase):
 
         self.assertIsNone(block)
         self.assertEqual(len(mempool), 1)
-        self.assertEqual(community.broadcasted_blocks, [])
-        self.assertEqual(len(blockchain.blocks), 1)
+        community.broadcast_block_to_teammates.assert_not_called()
+        blockchain.add_block.assert_called_once()
 
     def test_mine_once_respects_max_transactions_per_block(self) -> None:
-        blockchain = FakeBlockchain()
-        mempool = Mempool()
+        # The optional transaction limit lets us cap block size later if needed.
+        blockchain = Blockchain()
         tx1 = make_tx(b"one")
         tx2 = make_tx(b"two")
-        mempool.add(tx1)
-        mempool.add(tx2)
+        blockchain.mempool.add(tx1)
+        blockchain.mempool.add(tx2)
         miner = Miner(
             blockchain=blockchain,
-            mempool=mempool,
+            mempool=blockchain.mempool,
             difficulty=4,
             max_transactions_per_block=1,
         )
@@ -119,8 +107,8 @@ class MinerTests(unittest.TestCase):
 
         self.assertIsNotNone(block)
         self.assertEqual(block.transactions, [tx1])
-        self.assertEqual(len(mempool), 1)
-        self.assertTrue(mempool.contains(tx2.tx_hash()))
+        self.assertEqual(len(blockchain.mempool), 1)
+        self.assertTrue(blockchain.mempool.contains(tx2.tx_hash()))
 
 
 if __name__ == "__main__":

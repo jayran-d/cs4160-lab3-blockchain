@@ -64,7 +64,7 @@ class Miner:
             difficulty=self.difficulty,
         )
 
-        accepted = self.blockchain.append_block(block)
+        accepted = self.blockchain.add_block(block)
         if not accepted:
             return None
 
