@@ -283,11 +283,17 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     @lazy_wrapper(BlockGossipPayload)
     def on_block_gossip(self, peer, payload: BlockGossipPayload):
+        self.apply_block_gossip_payload(payload)
+
+    def apply_block_gossip_payload(self, payload: BlockGossipPayload) -> bool:
+        """
+        Validate and apply a block received from internal block gossip.
+        """
         try:
             tx_hashes = split_tx_hashes(payload.tx_hashes)
         except ValueError as error:
             print(f"Ignoring malformed block gossip: {error}")
-            return
+            return False
 
         block = Block(
             header=BlockHeader(
@@ -303,9 +309,11 @@ class BlockchainCommunity(Community):
 
         if block.block_hash() != payload.block_hash:
             print("Ignoring block gossip with mismatching block hash")
-            return
+            return False
 
         accepted = self.blockchain.add_block(block)
         if accepted:
             for tx_hash in block.tx_hashes():
                 self.mempool.remove(tx_hash)
+
+        return accepted
