@@ -1,9 +1,10 @@
 from chain.block import compute_txs_hash, create_genesis_block, split_tx_hashes
-from chain.pow import mine_block
+from chain.pow import mine_block, valid_pow
 from chain.utils import sha256
 from chain.transaction import Transaction
 from config import HASH_SIZE, BLOCK_DIFFICULTY, HEADER_SIZE
 from chain.block import Block, BlockHeader
+
 
 
 def test_genesis_block_is_valid():
@@ -12,6 +13,7 @@ def test_genesis_block_is_valid():
 
     assert len(genesis.block_hash()) == HASH_SIZE
     assert genesis.validate()
+    assert valid_pow(genesis.block_hash(), genesis.header.difficulty)
     assert genesis.header.prev_hash == b"\x00" * HASH_SIZE
     assert genesis.transactions == []
 
