@@ -97,6 +97,27 @@ class Block:
     header: BlockHeader
     transactions: list[Transaction]
 
+    def block_hash(self) -> bytes:
+        """
+        Return the SHA-256 hash of the block header.
+        """
+        return self.header.block_hash()
+
+    def tx_hashes(self) -> list[bytes]:
+        """
+        Return the list of transaction hashes in block order.
+        """
+        return [tx.tx_hash() for tx in self.transactions]
+
+    def tx_hashes_bytes(self) -> bytes:
+        """
+        Return concatenated transaction hashes.
+
+        This is exactly what the server expects in BlockResponsePayload.tx_hashes.
+        Empty block => b"".
+        """
+        return b"".join(self.tx_hashes())
+
     def validate(self) -> bool:
         """
         Validate this block by checking:
@@ -114,14 +135,16 @@ class Block:
         if len(self.header.txs_hash) != HASH_SIZE:
             return False
 
-        tx_hashes = [tx.tx_hash() for tx in self.transactions]
-
-        expected_txs_hash = compute_txs_hash(tx_hashes)
+        expected_txs_hash = compute_txs_hash(self.tx_hashes())
 
         if expected_txs_hash != self.header.txs_hash:
             return False
 
-        return valid_pow(self.header.block_hash(), self.header.difficulty)
+        if not valid_pow(self.block_hash(), self.header.difficulty):
+            return False
+
+        return True
+
 
 
 def create_genesis_block() -> Block:

@@ -25,7 +25,7 @@ class Transaction:
 
         return sha256(blob)
 
-    def valid_signature(self) -> bool:
+    def verify_signature(self) -> bool:
         """
         Verify the server transaction signature.
 
