@@ -1,16 +1,11 @@
 import asyncio
 
-from aiohttp import payload
 from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 
 from chain.block import Block, BlockHeader, split_tx_hashes
-from chain import block
 from chain.blockchain import Blockchain
 from chain.pretty_print import print_block
-
-from chain.transaction import Transaction
-from chain.blockchain import Blockchain
 from chain.miner import Miner
 from chain.transaction import Transaction
 from payloads import (
@@ -237,6 +232,18 @@ class BlockchainCommunity(Community):
         )
         self.broadcast_to_teammates(payload)
 
+    def broadcast_transaction_to_teammates(self, transaction: Transaction) -> None:
+        """
+        Share a server-submitted transaction with teammates.
+        """
+        payload = SubmitTransactionPayload(
+            sender_key=transaction.sender_key,
+            data=transaction.data,
+            timestamp=transaction.timestamp,
+            signature=transaction.signature,
+        )
+        self.broadcast_to_teammates(payload)
+
     # ----------------------------------------------------------------------
     # Miner lifecycle
     # ----------------------------------------------------------------------
@@ -264,8 +271,11 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     @lazy_wrapper(SubmitTransactionPayload)
     def on_submit_transaction(self, peer, payload: SubmitTransactionPayload):
-        if not self.is_server_peer(peer):
-            print("Ignoring SubmitTransaction from non-server peer")
+        is_server = self.is_server_peer(peer)
+        is_teammate = self.is_teammate_peer(peer)
+
+        if not is_server and not is_teammate:
+            print("Ignoring SubmitTransaction from unknown peer")
             return
 
         tx = Transaction(
@@ -303,22 +313,23 @@ class BlockchainCommunity(Community):
 
             success = True
             message = "Transaction accepted into mempool"
-            should_broadcast = True
+            should_broadcast = is_server
 
             print(f"Accepted transaction: {tx_hash.hex()}")
             print(f"Mempool size: {len(self.blockchain.mempool)}")
 
-        response = SubmitTransactionResponsePayload(
-            success=success,
-            tx_hash=tx_hash,
-            message=message,
-        )
+        if is_server:
+            response = SubmitTransactionResponsePayload(
+                success=success,
+                tx_hash=tx_hash,
+                message=message,
+            )
 
-        self.ez_send(peer, response)
+            self.ez_send(peer, response)
 
         if should_broadcast:
             # Share transaction with teammates.
-            self.broadcast_to_teammates(tx)
+            self.broadcast_transaction_to_teammates(tx)
             print("Broadcasted submitted transaction to teammates")
 
     @lazy_wrapper(GetChainHeightPayload)
