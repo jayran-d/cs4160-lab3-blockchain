@@ -3,6 +3,15 @@ import asyncio
 from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 
+from payloads import (
+    SubmitTransactionPayload,
+    SubmitTransactionResponsePayload,
+    GetChainHeightPayload,
+    ChainHeightResponsePayload,
+    GetBlockPayload,
+    BlockResponsePayload,
+)
+
 from config import (
     BLOCKCHAIN_COMMUNITY_ID_HEX,
     REGISTER_SERVER_PUBLIC_KEY_HEX,
@@ -17,14 +26,19 @@ class BlockchainCommunity(Community):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         self.group_id = GROUP_ID
 
         # ------------------------------------------------------------------
         # Message handlers
         # ------------------------------------------------------------------
 
-        # self.add_message_handler...
+        self.add_message_handler(SubmitTransactionPayload,
+                                 self.on_submit_transaction)
+        self.add_message_handler(GetChainHeightPayload,
+                                 self.on_get_chain_height)
+        self.add_message_handler(GetBlockPayload, self.on_get_block)
+
         # ------------------------------------------------------------------
         # Known peers
         # ------------------------------------------------------------------
@@ -188,6 +202,26 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     # Lab server query message handlers
     # ----------------------------------------------------------------------
+    @lazy_wrapper(SubmitTransactionPayload)
+    def on_submit_transaction(self, peer, payload: SubmitTransactionPayload):
+
+        if not self.is_server_peer(peer):
+            print("Ignoring SubmitTransaction from non-server peer")
+            return
+
+    @lazy_wrapper(GetChainHeightPayload)
+    def on_get_chain_height(self, peer, payload: GetChainHeightPayload):
+
+        if not self.is_server_peer(peer):
+            print("Ignoring GetChainHeight from non-server peer")
+            return
+
+    @lazy_wrapper(GetBlockPayload)
+    def on_get_block(self, peer, payload: GetBlockPayload):
+
+        if not self.is_server_peer(peer):
+            print("Ignoring GetBlock from non-server peer")
+            return
 
     # ----------------------------------------------------------------------
     # Internal teammate message handlers
