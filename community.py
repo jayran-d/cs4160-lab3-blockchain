@@ -426,7 +426,12 @@ class BlockchainCommunity(Community):
             print("Ignoring BlockGossip from non-teammate peer")
             return
 
+        # Once a block is found, the miner should immediately stop with mining the current block and the block should be processed. After mining can continue.
+        self.stop_mining()
+
         self.process_block_gossip(payload)
+
+        self.start_mining()
 
     def process_block_gossip(self, payload: BlockGossipPayload) -> bool:
         """
