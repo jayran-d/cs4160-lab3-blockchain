@@ -85,4 +85,4 @@ HASH_SIZE = 32
 HEADER_SIZE = 84
 
 # Mining interval in seconds.
-MINE_BLOCK_PER_SECONDS = 15
+MINE_BLOCK_PER_SECONDS = 5
