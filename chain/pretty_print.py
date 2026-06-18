@@ -22,6 +22,8 @@ def format_transaction(tx: Transaction, index: int | None = None) -> str:
 
 def format_block(block: Block, height: int | None = None) -> str:
     title = f"Block height {height}" if height is not None else "Block"
+    tx_hashes = block.tx_hashes()
+    has_full_transactions = len(block.transactions) > 0
 
     lines = [
         "=" * 70,
@@ -33,15 +35,20 @@ def format_block(block: Block, height: int | None = None) -> str:
         f"timestamp:  {block.header.timestamp}",
         f"difficulty: {block.header.difficulty}",
         f"nonce:      {block.header.nonce}",
-        f"tx_count:   {len(block.transactions)}",
+        f"tx_count:   {len(tx_hashes)}",
     ]
 
-    if not block.transactions:
-        lines.append("transactions: []")
-    else:
+    if has_full_transactions:
         lines.append("transactions:")
         for i, tx in enumerate(block.transactions):
             lines.append(format_transaction(tx, i))
+    elif tx_hashes:
+        lines.append("transaction_hashes:")
+        for i, tx_hash in enumerate(tx_hashes):
+            lines.append(f"  {i}: {tx_hash.hex()}")
+        lines.append("full_transactions: not available on this node")
+    else:
+        lines.append("transactions: []")
 
     return "\n".join(lines)
 

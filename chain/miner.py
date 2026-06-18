@@ -56,6 +56,12 @@ class Miner:
         transactions = self.blockchain.mempool.transactions_for_block(
             self.max_transactions_per_block
         )
+        print(
+            "Mining next block: "
+            f"parent_height={self.blockchain.height()}, "
+            f"parent_hash={self.blockchain.tip_hash().hex()}, "
+            f"tx_count={len(transactions)}"
+        )
 
         prev_hash = self.blockchain.tip_hash()
         block = mine_block(
@@ -67,9 +73,18 @@ class Miner:
 
         block_added = self.blockchain.add_block(block)
         if not block_added:
+            print(f"Mined block was rejected: block_hash={block.block_hash().hex()}")
             return None
+
+        print(
+            "Mined and accepted block: "
+            f"height={self.blockchain.height()}, "
+            f"block_hash={block.block_hash().hex()}, "
+            f"tx_count={len(block.tx_hashes())}"
+        )
 
         if self.broadcast_block is not None:
             self.broadcast_block(block)
+            print("Broadcasted mined block to teammates")
 
         return block

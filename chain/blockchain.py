@@ -75,6 +75,10 @@ class Blockchain:
             # Orphan: parent not yet known - stash for later.
             if parent_hash not in self.blocks_by_hash:
                 self.pending_blocks.setdefault(parent_hash, []).append(block)
+                print(
+                    "Stored orphan block waiting for parent: "
+                    f"block_hash={block_hash.hex()}, parent_hash={parent_hash.hex()}"
+                )
                 return False
 
             parent_height = self.height_by_hash[parent_hash]
@@ -87,10 +91,26 @@ class Blockchain:
             if parent_hash == self.best_tip_hash:
                 self._append_to_canonical_chain(block_hash, height)
                 self._remove_block_transactions_from_mempool(block)
+                print(
+                    "Accepted block on canonical chain: "
+                    f"height={height}, block_hash={block_hash.hex()}, "
+                    f"tx_count={len(block.tx_hashes())}"
+                )
             elif height > self.best_tip_height:
                 old_canonical_blocks = self._canonical_blocks()
                 self._apply_longest_chain_rule(block_hash, height)
                 self._sync_mempool_after_canonical_change(old_canonical_blocks)
+                print(
+                    "Switched to longer chain: "
+                    f"height={height}, block_hash={block_hash.hex()}, "
+                    f"tx_count={len(block.tx_hashes())}"
+                )
+            else:
+                print(
+                    "Stored valid side-fork block: "
+                    f"height={height}, block_hash={block_hash.hex()}, "
+                    f"tx_count={len(block.tx_hashes())}"
+                )
 
             # Process any orphan blocks that were waiting for this block as their parent.
             self._process_orphans_for_parent(block_hash)

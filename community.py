@@ -454,4 +454,15 @@ class BlockchainCommunity(Community):
             print("Ignoring block gossip with mismatching block hash")
             return False
 
-        return self.blockchain.add_block(block)
+        print(
+            "Received teammate block gossip: "
+            f"block_hash={payload.block_hash.hex()}, "
+            f"prev_hash={payload.prev_hash.hex()}, "
+            f"tx_count={len(tx_hashes)}"
+        )
+
+        accepted = self.blockchain.add_block(block)
+        if not accepted:
+            print(f"Teammate block was not added: block_hash={payload.block_hash.hex()}")
+
+        return accepted
