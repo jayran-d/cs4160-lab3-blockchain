@@ -11,9 +11,12 @@ from ipv8.configuration import (
 from ipv8_service import IPv8
 from ipv8.util import run_forever
 
+from chain.pretty_print import print_chain
+
 from registration.registation_community import Lab3RegistrationCommunity
 from community import BlockchainCommunity
 from config import KEY_FILE
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Lab 3 PoW blockchain IPv8 node.")
@@ -105,14 +108,14 @@ async def main(register: bool) -> None:
             print("Registering blockchain community...")
             register_community.register_blockchain()
 
-      
-
         await run_forever()
 
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("\nInterrupted by user. Exiting ... ")
 
     finally:
+        print("\n ------- Final chain: ------- \n")
+        print_chain(blockchain_community.blockchain)
         blockchain_community.stop_mining()
         print("Stopping IPV8\n")
         await ipv8.stop()
@@ -120,10 +123,4 @@ async def main(register: bool) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
-    asyncio.run(
-        main(
-            register=args.register,
-            test=args.test,
-            test_interval=args.test_interval,
-        )
-    )
+    asyncio.run(main(register=args.register))
