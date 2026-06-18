@@ -168,8 +168,21 @@ class Blockchain:
         """
         Remove transactions included in a newly canonical block.
         """
+        before_hashes = self._mempool_tx_hashes()
+
         for tx_hash in block.tx_hashes():
             self.mempool.remove(tx_hash)
+
+        after_hashes = self._mempool_tx_hashes()
+        removed_hashes = before_hashes - after_hashes
+
+        if block.tx_hashes():
+            print(
+                "Mempool update after canonical block: "
+                f"before={len(before_hashes)}, after={len(after_hashes)}, "
+                f"removed={self._format_hashes(removed_hashes)}, "
+                f"block_txs={self._format_hashes(block.tx_hashes())}"
+            )
 
     def _apply_longest_chain_rule(
         self, new_tip_hash: bytes, new_tip_height: int
@@ -218,15 +231,29 @@ class Blockchain:
         Restore txs from old canonical blocks that fell out of the best chain,
         then remove txs now included in the current canonical chain.
         """
+        before_hashes = self._mempool_tx_hashes()
         new_canonical_tx_hashes = self._canonical_tx_hashes()
         old_transactions = self._full_transactions_by_hash(old_canonical_blocks)
+        restored_hashes = set()
 
         for tx_hash, transaction in old_transactions.items():
             if tx_hash not in new_canonical_tx_hashes:
                 self.mempool.add(transaction)
+                restored_hashes.add(tx_hash)
 
         for tx_hash in new_canonical_tx_hashes:
             self.mempool.remove(tx_hash)
+
+        after_hashes = self._mempool_tx_hashes()
+        removed_hashes = before_hashes - after_hashes
+
+        print(
+            "Mempool reorg sync: "
+            f"before={len(before_hashes)}, after={len(after_hashes)}, "
+            f"restored_from_old_chain={self._format_hashes(restored_hashes)}, "
+            f"removed_for_new_chain={self._format_hashes(removed_hashes)}, "
+            f"new_chain_txs={self._format_hashes(new_canonical_tx_hashes)}"
+        )
 
     def _canonical_tx_hashes(self) -> set[bytes]:
         tx_hashes = set()
@@ -258,3 +285,14 @@ class Blockchain:
                 return height
 
         return None
+
+    def _mempool_tx_hashes(self) -> set[bytes]:
+        return {transaction.tx_hash() for transaction in self.mempool.get_all()}
+
+    def _format_hashes(self, tx_hashes) -> str:
+        hashes = sorted(tx_hash.hex() for tx_hash in tx_hashes)
+
+        if not hashes:
+            return "[]"
+
+        return "[" + ", ".join(hashes) + "]"

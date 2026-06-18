@@ -11,6 +11,8 @@ from ipv8.configuration import (
 from ipv8_service import IPv8
 from ipv8.util import run_forever
 
+from chain.pretty_print import print_chain
+
 from registration.registation_community import Lab3RegistrationCommunity
 from community import BlockchainCommunity
 from config import KEY_FILE
@@ -30,7 +32,14 @@ def parse_args():
         "-test",
         "--test",
         action="store_true",
-        help="Run dummy transaction test.",
+        help="Run the local transaction bot for mempool/fork testing.",
+    )
+
+    parser.add_argument(
+        "--test-interval",
+        type=float,
+        default=1.0,
+        help="Seconds between locally generated test transactions.",
     )
 
     return parser.parse_args()
@@ -76,7 +85,7 @@ def init_ipv8():
     return ipv8
 
 
-async def main(register: bool, test: bool) -> None:
+async def main(register: bool) -> None:
     ipv8 = init_ipv8()
 
     await ipv8.start()
@@ -99,16 +108,14 @@ async def main(register: bool, test: bool) -> None:
             print("Registering blockchain community...")
             register_community.register_blockchain()
 
-        if test:
-            # Implement test logic
-            pass
-
         await run_forever()
 
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("\nInterrupted by user. Exiting ... ")
 
     finally:
+        print("\n ------- Final chain: ------- \n")
+        print_chain(blockchain_community.blockchain)
         blockchain_community.stop_mining()
         print("Stopping IPV8\n")
         await ipv8.stop()
@@ -116,4 +123,4 @@ async def main(register: bool, test: bool) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
-    asyncio.run(main(register=args.register, test=args.test))
+    asyncio.run(main(register=args.register))

@@ -8,3 +8,6 @@ __pycache__/
 keys/*.pem
 keys/*.key
 key.pem
+
+# Track bot key for demo/testing
+!keys/bot_identity_key.pem
