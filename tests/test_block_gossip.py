@@ -8,7 +8,7 @@ from payloads import BlockGossipPayload
 
 
 def make_test_community() -> BlockchainCommunity:
-    # Build only the state needed by apply_block_gossip_payload, without IPv8 startup.
+    # Build only the state needed by process_block_gossip, without IPv8 startup.
     community = BlockchainCommunity.__new__(BlockchainCommunity)
     community.blockchain = Blockchain()
     community.mempool = community.blockchain.mempool
@@ -39,7 +39,7 @@ def test_valid_block_gossip_is_added_and_cleans_mempool(fake_tx):
         difficulty=BLOCK_DIFFICULTY,
     )
 
-    accepted = community.apply_block_gossip_payload(make_payload(block))
+    accepted = community.process_block_gossip(make_payload(block))
 
     assert accepted
     assert community.blockchain.tip_hash() == block.block_hash()
@@ -59,7 +59,7 @@ def test_block_gossip_rejects_mismatching_block_hash(fake_tx):
     payload = make_payload(block)
     payload.block_hash = b"\xff" * HASH_SIZE
 
-    accepted = community.apply_block_gossip_payload(payload)
+    accepted = community.process_block_gossip(payload)
 
     assert not accepted
     assert community.blockchain.height() == 0
@@ -87,7 +87,7 @@ def test_block_gossip_rejects_bad_body_commitment(fake_tx):
     payload.txs_hash = bad_header.txs_hash
     payload.block_hash = bad_header.block_hash()
 
-    accepted = community.apply_block_gossip_payload(payload)
+    accepted = community.process_block_gossip(payload)
 
     assert not accepted
     assert community.blockchain.height() == 0
@@ -107,7 +107,7 @@ def test_block_gossip_rejects_malformed_tx_hashes(fake_tx):
     payload = make_payload(block)
     payload.tx_hashes = b"\x01" * (HASH_SIZE - 1)
 
-    accepted = community.apply_block_gossip_payload(payload)
+    accepted = community.process_block_gossip(payload)
 
     assert not accepted
     assert community.blockchain.height() == 0
@@ -133,7 +133,7 @@ def test_equal_height_fork_is_stored_but_not_canonical(fake_tx):
         difficulty=BLOCK_DIFFICULTY,
     )
 
-    accepted = community.apply_block_gossip_payload(make_payload(fork_block))
+    accepted = community.process_block_gossip(make_payload(fork_block))
 
     assert accepted
     assert fork_block.block_hash() in community.blockchain.blocks_by_hash
@@ -175,10 +175,10 @@ def test_longer_gossiped_fork_becomes_canonical_and_cleans_mempool(fake_tx):
         difficulty=BLOCK_DIFFICULTY,
     )
 
-    assert community.apply_block_gossip_payload(make_payload(fork_block))
+    assert community.process_block_gossip(make_payload(fork_block))
     assert community.blockchain.tip_hash() == current_tip.block_hash()
 
-    assert community.apply_block_gossip_payload(make_payload(fork_child))
+    assert community.process_block_gossip(make_payload(fork_child))
 
     assert community.blockchain.tip_hash() == fork_child.block_hash()
     assert community.blockchain.get_block_at_height(1).block_hash() == fork_block.block_hash()

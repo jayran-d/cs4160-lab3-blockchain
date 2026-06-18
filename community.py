@@ -8,6 +8,7 @@ from chain.blockchain import Blockchain
 from chain.pretty_print import print_block
 from chain.miner import Miner
 from chain.transaction import Transaction
+from chain.pow import valid_pow
 from payloads import (
     SubmitTransactionPayload,
     SubmitTransactionResponsePayload,
@@ -383,9 +384,14 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
     @lazy_wrapper(TransactionGossipPayload)
     def on_transaction_gossip(self, peer, payload: TransactionGossipPayload):
-        self.apply_transaction_gossip_payload(payload)
 
-    def apply_transaction_gossip_payload(self, payload: TransactionGossipPayload) -> bool:
+        if not self.is_teammate_peer(peer):
+            print("Ignoring TransactionGossip from non-teammate peer")
+            return
+
+        self.process_transaction_gossip(payload)
+
+    def process_transaction_gossip(self, payload: TransactionGossipPayload) -> bool:
         """
         Validate and store a transaction received from internal transaction gossip.
         """
@@ -398,7 +404,9 @@ class BlockchainCommunity(Community):
         tx_hash = tx.tx_hash()
 
         if not tx.verify_signature():
-            print(f"Ignoring gossiped transaction with invalid signature: {tx_hash.hex()}")
+            print(
+                f"Ignoring gossiped transaction with invalid signature: {tx_hash.hex()}"
+            )
             return False
 
         if self.mempool.contains(tx_hash):
@@ -413,9 +421,14 @@ class BlockchainCommunity(Community):
 
     @lazy_wrapper(BlockGossipPayload)
     def on_block_gossip(self, peer, payload: BlockGossipPayload):
-        self.apply_block_gossip_payload(payload)
 
-    def apply_block_gossip_payload(self, payload: BlockGossipPayload) -> bool:
+        if not self.is_teammate_peer(peer):
+            print("Ignoring BlockGossip from non-teammate peer")
+            return
+
+        self.process_block_gossip(payload)
+
+    def process_block_gossip(self, payload: BlockGossipPayload) -> bool:
         """
         Validate and apply a block received from internal block gossip.
         """
@@ -436,9 +449,5 @@ class BlockchainCommunity(Community):
             transactions=[],
             transaction_hashes=tx_hashes,
         )
-
-        if block.block_hash() != payload.block_hash:
-            print("Ignoring block gossip with mismatching block hash")
-            return False
 
         return self.blockchain.add_block(block)

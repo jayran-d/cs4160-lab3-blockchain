@@ -47,7 +47,7 @@ def test_apply_transaction_gossip_accepts_valid_transaction(fake_tx, monkeypatch
     community = make_test_community()
     monkeypatch.setattr(Transaction, "verify_signature", lambda self: True)
 
-    accepted = community.apply_transaction_gossip_payload(make_payload(fake_tx))
+    accepted = community.process_transaction_gossip(make_payload(fake_tx))
 
     assert accepted
     assert community.mempool.contains(fake_tx.tx_hash())
@@ -58,7 +58,7 @@ def test_apply_transaction_gossip_rejects_invalid_transaction(fake_tx, monkeypat
     community = make_test_community()
     monkeypatch.setattr(Transaction, "verify_signature", lambda self: False)
 
-    accepted = community.apply_transaction_gossip_payload(make_payload(fake_tx))
+    accepted = community.process_transaction_gossip(make_payload(fake_tx))
 
     assert not accepted
     assert not community.mempool.contains(fake_tx.tx_hash())
@@ -70,7 +70,7 @@ def test_apply_transaction_gossip_does_not_rebroadcast(fake_tx, monkeypatch):
     community.broadcast_to_teammates = Mock()
     monkeypatch.setattr(Transaction, "verify_signature", lambda self: True)
 
-    accepted = community.apply_transaction_gossip_payload(make_payload(fake_tx))
+    accepted = community.process_transaction_gossip(make_payload(fake_tx))
 
     assert accepted
     community.broadcast_to_teammates.assert_not_called()
@@ -82,7 +82,7 @@ def test_apply_transaction_gossip_ignores_duplicate(fake_tx, monkeypatch):
     community.mempool.add(fake_tx)
     monkeypatch.setattr(Transaction, "verify_signature", lambda self: True)
 
-    accepted = community.apply_transaction_gossip_payload(make_payload(fake_tx))
+    accepted = community.process_transaction_gossip(make_payload(fake_tx))
 
     assert not accepted
     assert len(community.mempool) == 1

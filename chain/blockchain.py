@@ -63,9 +63,11 @@ class Blockchain:
 
             # Validate block-internal correctness.
             if not block.validate():
+                print("Ignoring invalid block / block with bad header or txs_hash")
                 return False
 
             if not valid_pow(block_hash, block.header.difficulty):
+                print("Ignoring block with invalid proof of work")
                 return False
 
             parent_hash = block.prev_hash()
