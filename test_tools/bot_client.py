@@ -11,7 +11,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from client import init_ipv8
 from community import BlockchainCommunity
-from test_tools.transaction_bot import TransactionBot
+from transaction_bot import TransactionBot
 
 
 def parse_args():
@@ -37,12 +37,13 @@ async def main(interval: float) -> None:
 
     try:
         await blockchain_community.find_teammate_peers()
-        blockchain_community.start_mining()
+        # blockchain_community.start_mining()
 
         bot = TransactionBot(
             community=blockchain_community,
             interval_seconds=interval,
         )
+
         bot.start()
 
         await run_forever()

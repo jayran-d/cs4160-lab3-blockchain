@@ -14,8 +14,6 @@ from ipv8.util import run_forever
 from registration.registation_community import Lab3RegistrationCommunity
 from community import BlockchainCommunity
 from config import KEY_FILE
-from test_tools.transaction_bot import TransactionBot
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Lab 3 PoW blockchain IPv8 node.")
@@ -84,9 +82,8 @@ def init_ipv8():
     return ipv8
 
 
-async def main(register: bool, test: bool, test_interval: float) -> None:
+async def main(register: bool) -> None:
     ipv8 = init_ipv8()
-    transaction_bot = None
 
     await ipv8.start()
 
@@ -108,12 +105,7 @@ async def main(register: bool, test: bool, test_interval: float) -> None:
             print("Registering blockchain community...")
             register_community.register_blockchain()
 
-        if test:
-            transaction_bot = TransactionBot(
-                community=blockchain_community,
-                interval_seconds=test_interval,
-            )
-            transaction_bot.start()
+      
 
         await run_forever()
 
@@ -121,8 +113,6 @@ async def main(register: bool, test: bool, test_interval: float) -> None:
         print("\nInterrupted by user. Exiting ... ")
 
     finally:
-        if transaction_bot is not None:
-            transaction_bot.stop()
         blockchain_community.stop_mining()
         print("Stopping IPV8\n")
         await ipv8.stop()
