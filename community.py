@@ -438,6 +438,8 @@ class BlockchainCommunity(Community):
             print(f"Ignoring malformed block gossip: {error}")
             return False
 
+        transactions = self.mempool.get_known_transactions(tx_hashes)
+
         block = Block(
             header=BlockHeader(
                 prev_hash=payload.prev_hash,
@@ -446,10 +448,10 @@ class BlockchainCommunity(Community):
                 difficulty=payload.difficulty,
                 nonce=payload.nonce,
             ),
-            transactions=[],
+            transactions=transactions,
             transaction_hashes=tx_hashes,
         )
-        
+
         if block.block_hash() != payload.block_hash:
             print("Ignoring block gossip with mismatching block hash")
             return False
@@ -463,6 +465,8 @@ class BlockchainCommunity(Community):
 
         accepted = self.blockchain.add_block(block)
         if not accepted:
-            print(f"Teammate block was not added: block_hash={payload.block_hash.hex()}")
+            print(
+                f"Teammate block was not added: block_hash={payload.block_hash.hex()}"
+            )
 
         return accepted

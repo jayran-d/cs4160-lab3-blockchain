@@ -1,4 +1,5 @@
 from chain.transaction import Transaction
+from config import HASH_SIZE
 import threading
 
 
@@ -10,6 +11,7 @@ class Mempool:
     """
 
     def __init__(self):
+        self.all_known_txs: dict[bytes, Transaction] = {}
         self.transactions: dict[bytes, Transaction] = {}
         self.lock = threading.Lock()
 
@@ -22,7 +24,8 @@ class Mempool:
         tx_hash = tx.tx_hash()
         with self.lock:
             self.transactions[tx_hash] = tx
-        
+            self.all_known_txs[tx_hash] = tx
+
         return tx_hash
 
     def remove(self, tx_hash: bytes):
@@ -47,21 +50,37 @@ class Mempool:
         """
         with self.lock:
             return list(self.transactions.values())
-        
+
+    def get_known_transactions(self, tx_hashes: list[bytes]) -> list[Transaction]:
+        """
+        Return known Transaction objects for the given transaction hashes.
+
+        Missing transactions are skipped.
+        """
+        transactions = []
+
+        with self.lock:
+            for tx_hash in tx_hashes:
+                if len(tx_hash) != HASH_SIZE:
+                    raise ValueError("tx_hash must be exactly 32 bytes")
+
+                tx = self.all_known_txs.get(tx_hash)
+
+                if tx is not None:
+                    transactions.append(tx)
+
+        return transactions
+
     def transactions_for_block(self, limit: int | None = None) -> list[Transaction]:
         transactions = self.get_all()
         if limit is None:
             return transactions
-        return transactions[:limit]    
-    
+        return transactions[:limit]
+
     def replace(self, transactions: list[Transaction]) -> None:
         with self.lock:
-            self.transactions = {
-                tx.tx_hash(): tx
-                for tx in transactions
-            }
+            self.transactions = {tx.tx_hash(): tx for tx in transactions}
 
-    
     def get(self, tx_hash: bytes) -> Transaction | None:
         with self.lock:
             return self.transactions.get(tx_hash)
@@ -70,6 +89,6 @@ class Mempool:
         with self.lock:
             for tx in transactions:
                 self.transactions.pop(tx.tx_hash(), None)
-        
+
     def __len__(self) -> int:
         return len(self.transactions)
