@@ -76,7 +76,7 @@ MEMBER_PUBLIC_KEYS_HEX = {
 # ---------------------------------------------------------------------------
 
 # Number of leading zero bits required in a valid block hash.
-BLOCK_DIFFICULTY = 8
+BLOCK_DIFFICULTY = 16
 
 # SHA-256 hash size in bytes.
 HASH_SIZE = 32
@@ -85,4 +85,4 @@ HASH_SIZE = 32
 HEADER_SIZE = 84
 
 # Mining interval in seconds.
-MINE_BLOCK_PER_SECONDS = 5
+MINE_BLOCK_PER_SECONDS = 30

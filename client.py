@@ -14,6 +14,7 @@ from ipv8.util import run_forever
 from registration.registation_community import Lab3RegistrationCommunity
 from community import BlockchainCommunity
 from config import KEY_FILE
+from test_tools.transaction_bot import TransactionBot
 
 
 def parse_args():
@@ -30,7 +31,14 @@ def parse_args():
         "-test",
         "--test",
         action="store_true",
-        help="Run dummy transaction test.",
+        help="Run the local transaction bot for mempool/fork testing.",
+    )
+
+    parser.add_argument(
+        "--test-interval",
+        type=float,
+        default=1.0,
+        help="Seconds between locally generated test transactions.",
     )
 
     return parser.parse_args()
@@ -76,8 +84,9 @@ def init_ipv8():
     return ipv8
 
 
-async def main(register: bool, test: bool) -> None:
+async def main(register: bool, test: bool, test_interval: float) -> None:
     ipv8 = init_ipv8()
+    transaction_bot = None
 
     await ipv8.start()
 
@@ -100,8 +109,11 @@ async def main(register: bool, test: bool) -> None:
             register_community.register_blockchain()
 
         if test:
-            # Implement test logic
-            pass
+            transaction_bot = TransactionBot(
+                community=blockchain_community,
+                interval_seconds=test_interval,
+            )
+            transaction_bot.start()
 
         await run_forever()
 
@@ -109,6 +121,8 @@ async def main(register: bool, test: bool) -> None:
         print("\nInterrupted by user. Exiting ... ")
 
     finally:
+        if transaction_bot is not None:
+            transaction_bot.stop()
         blockchain_community.stop_mining()
         print("Stopping IPV8\n")
         await ipv8.stop()
@@ -116,4 +130,10 @@ async def main(register: bool, test: bool) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
-    asyncio.run(main(register=args.register, test=args.test))
+    asyncio.run(
+        main(
+            register=args.register,
+            test=args.test,
+            test_interval=args.test_interval,
+        )
+    )

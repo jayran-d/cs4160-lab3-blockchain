@@ -410,13 +410,24 @@ class BlockchainCommunity(Community):
             return False
 
         if self.mempool.contains(tx_hash):
+            print(
+                "Ignoring gossiped transaction already in mempool: "
+                f"tx_hash={tx_hash.hex()}, mempool_size={len(self.mempool)}"
+            )
             return False
 
         if self.blockchain.tx_in_canonical_chain(tx_hash):
+            print(
+                "Ignoring gossiped transaction already in canonical chain: "
+                f"tx_hash={tx_hash.hex()}, mempool_size={len(self.mempool)}"
+            )
             return False
 
         self.mempool.add(tx)
-        print(f"Accepted gossiped transaction: {tx_hash.hex()}")
+        print(
+            "Accepted gossiped transaction: "
+            f"tx_hash={tx_hash.hex()}, mempool_size={len(self.mempool)}"
+        )
         return True
 
     @lazy_wrapper(BlockGossipPayload)
