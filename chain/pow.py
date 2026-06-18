@@ -1,4 +1,5 @@
 from chain.block import Block, BlockHeader, compute_txs_hash
+from chain.transaction import Transaction
 from config import BLOCK_DIFFICULTY, HASH_SIZE
 
 
@@ -52,7 +53,7 @@ def valid_pow(block_hash: bytes, difficulty: int) -> bool:
 
 def mine_block(
     prev_hash: bytes,
-    transactions: list,
+    transactions: list[Transaction],
     timestamp: int,
     difficulty: int = BLOCK_DIFFICULTY,
 ):

@@ -449,5 +449,9 @@ class BlockchainCommunity(Community):
             transactions=[],
             transaction_hashes=tx_hashes,
         )
+        
+        if block.block_hash() != payload.block_hash:
+            print("Ignoring block gossip with mismatching block hash")
+            return False
 
         return self.blockchain.add_block(block)
