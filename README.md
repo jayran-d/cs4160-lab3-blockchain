@@ -9,8 +9,8 @@ the longest-chain consensus rule.
 
 The implementation was developed as part of the Blockchain Engineering (CS4160)
 course. The full assignment description is kept separately in
-`ASSIGNMENTREADME.md`; this README focuses on how our implementation works and
-how to run it.
+`docs/LAB-DESCRIPTION.md`; this README focuses on how our implementation works
+and how to run it.
 
 ## Features
 
@@ -74,16 +74,17 @@ how to run it.
 
 ### Important Components
 
-| Component | Description |
-| --- | --- |
-| `chain/` | Core blockchain implementation |
-| `registration/` | Registration protocol and server interaction |
-| `community.py` | Main blockchain overlay, peer filtering, transaction gossip, and block gossip |
-| `payloads.py` | Blockchain network message payloads |
-| `client.py` | Application entry point |
-| `config.py` | Group ID, community IDs, public keys, key path, and mining parameters |
-| `tests/` | Unit and simulation tests |
-| `docs/` | Development process and contribution notes |
+| Component       | Description                                                                   |
+| --------------- | ----------------------------------------------------------------------------- |
+| `chain/`        | Core blockchain implementation                                                |
+| `registration/` | Registration protocol and server interaction                                  |
+| `community.py`  | Main blockchain overlay, peer filtering, transaction gossip, and block gossip |
+| `payloads.py`   | Blockchain network message payloads                                           |
+| `client.py`     | Application entry point                                                       |
+| `config.py`     | Group ID, community IDs, public keys, key path, and mining parameters         |
+| `tests/`        | Unit and simulation tests                                                     |
+| `docs/`         | Development process and contribution notes                                    |
+| `bot_tools/`    | Sandbox overlay and transaction bot for testing.                              |
 
 ## Design Decisions
 
@@ -208,7 +209,16 @@ Stop a node with:
 Ctrl+C
 ```
 
-On shutdown, the client prints the final local chain for inspection.
+### Sandbox Testing with the Transaction Bot
+
+`bot_tools/bot_client.py` is a local testing tool that sends signed test
+transactions to the running blockchain nodes. Run it with:
+
+```bash
+python bot_tools/bot_client.py --interval 1.0
+```
+
+`--interval` controls how often test transactions are generated.
 
 ## Blockchain Workflow
 

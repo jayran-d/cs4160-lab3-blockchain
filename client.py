@@ -28,20 +28,6 @@ def parse_args():
         help="Register the blockchain community with the Lab 3 server before running.",
     )
 
-    parser.add_argument(
-        "-test",
-        "--test",
-        action="store_true",
-        help="Run the local transaction bot for mempool/fork testing.",
-    )
-
-    parser.add_argument(
-        "--test-interval",
-        type=float,
-        default=1.0,
-        help="Seconds between locally generated test transactions.",
-    )
-
     return parser.parse_args()
 
 

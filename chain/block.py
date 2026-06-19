@@ -3,12 +3,10 @@ from chain.transaction import Transaction
 from dataclasses import dataclass
 from config import HASH_SIZE, HEADER_SIZE
 
-"""
-Naming:
-transactions  -> list[Transaction]
-tx_hashes     -> list[bytes]
-txs_hash      -> single bytes commitment -> sha256(tx1 + tx2 + ... + txn)
-"""
+# Naming:
+#   transactions  -> list[Transaction]
+#   tx_hashes     -> list[bytes]
+#   txs_hash      -> single bytes commitment -> sha256(tx1 + tx2 + ... + txn)
 
 
 @dataclass

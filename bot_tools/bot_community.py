@@ -1,9 +1,10 @@
 from community import BlockchainCommunity
-from payloads import ChainHeightResponsePayload
-from ipv8.lazy_community import lazy_wrapper
-from ipv8.peer import Peer
+from config import BLOCKCHAIN_COMMUNITY_ID_HEX
 
 
 class BotBlockchainCommunity(BlockchainCommunity):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    """
+    Blockchain community variant used by the local transaction bot for testing.
+    """
+
+    community_id = bytes.fromhex(BLOCKCHAIN_COMMUNITY_ID_HEX)

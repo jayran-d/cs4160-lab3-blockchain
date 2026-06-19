@@ -36,14 +36,6 @@ class Mempool:
         with self.lock:
             return tx_hash in self.transactions
 
-    def remove_multiple(self, transactions: list[Transaction]) -> None:
-        """
-        Remove multiple transactions at once that were included in a mined/appended block.
-        """
-        with self.lock:
-            for tx in transactions:
-                self.transactions.pop(tx.tx_hash(), None)
-
     def get_all(self) -> list[Transaction]:
         """
         Return current mempool transactions as a list.
@@ -76,10 +68,6 @@ class Mempool:
         if limit is None:
             return transactions
         return transactions[:limit]
-
-    def replace(self, transactions: list[Transaction]) -> None:
-        with self.lock:
-            self.transactions = {tx.tx_hash(): tx for tx in transactions}
 
     def get(self, tx_hash: bytes) -> Transaction | None:
         with self.lock:
