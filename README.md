@@ -9,7 +9,7 @@ the longest-chain consensus rule.
 
 The implementation was developed as part of the Blockchain Engineering (CS4160)
 course. The full assignment description is kept separately in
-`docs/LAB-DESCRIPTION.md`; this README focuses on how our implementation works
+`docs/LAB-3-DESCRIPTION.md`; this README focuses on how our implementation works
 and how to run it.
 
 ## Features
@@ -122,11 +122,56 @@ When the canonical chain changes, transactions from replaced blocks are restored
 to the mempool when needed, and transactions included in the new canonical chain
 are removed.
 
+The mempool also maintains a global index of all validated transactions that
+have been observed by the node. This index is used to reconstruct transaction
+objects when processing block gossip messages that contain only transaction
+hashes.
+
 ### Periodic Mining
 
 Mining runs continuously in a background task. At each interval, the miner builds
 a candidate block from the current mempool and searches for a valid
 Proof-of-Work nonce.
+
+### Transaction Hash-Based Block Gossip
+
+Blocks are gossiped using transaction hashes rather than transmitting the full
+transaction contents. This significantly reduces the size of block gossip
+messages, since transaction data is not duplicated when peers have already
+received the corresponding transactions through transaction gossip.
+
+To support this design, every validated transaction is stored in a global
+transaction index (`all_known_txs`) in addition to being placed in the mempool.
+This applies both to transactions received from the server and transactions
+received through peer gossip.
+
+When a block gossip message is received, the block contains only the hashes of
+its transactions. The receiving node reconstructs the full transaction list by
+looking up each transaction hash in `all_known_txs`. This allows blocks to be
+validated and applied without requiring transactions to be retransmitted inside
+every block message.
+
+This approach reduces network overhead while still allowing peers to reconstruct
+and verify received blocks.
+
+### Mining Difficulty and Mining Interval
+
+The blockchain uses a fixed Proof-of-Work difficulty of 16 leading zero bits and
+a mining interval of 15 seconds.
+
+These values were chosen as practical parameters for the lab demo. The difficulty
+is high enough that blocks are not mined instantly, but low enough that blocks can
+still be produced reliably. The mining interval prevents nodes from attempting to mine too aggressively, reducing excessive block creation during testing.
+
+### Background Tasks
+
+After startup, the node runs the blockchain community continuously while also
+starting mining as an asynchronous background task. This allows the node to keep
+listening for incoming IPv8 messages while periodically attempting to mine new
+blocks from the mempool.
+
+This design avoids requiring manual user interaction after startup and allows
+networking, transaction handling, block handling, and mining to run concurrently.
 
 ## Setup
 
@@ -143,14 +188,15 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+If you get an error from `ipv8_rust_tunnels` then you may need to use an old version of python (check the error you got). See `Python Version` section below.
+
 Place the node's IPv8 private key at the path configured in `config.py`.
+
 By default this is:
 
 ```text
 keys/lab_identity_key.pem
 ```
-
-Private keys should not be committed.
 
 Before running, check the relevant values in `config.py`:
 
@@ -162,31 +208,31 @@ Before running, check the relevant values in `config.py`:
 - `BLOCK_DIFFICULTY`
 - `MINE_BLOCK_PER_SECONDS`
 
-## Running the Project
+### Python Version
 
-### Start a Node
+This project should be run with Python 3.11 or another Python version supported
+by the IPv8 dependencies.
 
-Each group member starts one node:
+Python 3.14 may fail when installing `ipv8_rust_tunnels`, because one of its
+native dependencies may not yet support that Python version. If installation
+fails with a PyO3 or `ipv8_rust_tunnels` error, recreate the virtual environment
+with Python 3.11:
 
 ```bash
-python3 client.py
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-After startup, nodes automatically:
+## Running the Project
 
-- discover teammates
-- listen for incoming messages
-- exchange transactions
-- mine blocks
-- propagate blocks
-- synchronize chains
+Each group member runs one node. Exactly one of the three nodes should be started
+with registration enabled, so that the Lab 3 server can join the blockchain
+community and submit transactions.
 
-No additional manual interaction is required after the node is running.
+### Start the Registering Node
 
-### Register with the Server
-
-When all three nodes are online and have found each other, one group member can
-start a node with registration enabled:
+One group member starts their node with the `-r` flag:
 
 ```bash
 python3 client.py -r
@@ -198,8 +244,29 @@ The long option is also supported:
 python3 client.py --register
 ```
 
-This registers the configured blockchain community with the Lab 3 server so that
-the server can join the community and submit transactions.
+This starts the normal blockchain node and also registers the configured
+blockchain community with the Lab 3 server.
+
+### Start the Other Nodes
+
+The remaining group members start their nodes normally:
+
+```bash
+python3 client.py
+```
+
+python3 client.py
+
+After startup, all nodes automatically:
+
+- discover teammates
+- listen for incoming messages
+- exchange transactions
+- mine blocks
+- propagate blocks
+- synchronize chains
+
+No additional manual interaction is required after the nodes are running.
 
 ### Stop a Node
 
@@ -208,6 +275,19 @@ Stop a node with:
 ```text
 Ctrl+C
 ```
+
+## Expected Runtime Behavior
+
+During a successful run, the terminal should show messages indicating that:
+
+- teammates are discovered
+- transactions are received and validated
+- transactions are added to the mempool
+- blocks are mined
+- blocks are gossiped to teammates
+- received blocks are validated and added to the chain
+- the chain height increases over time
+- when a node is stopped with `Ctrl+C`, it prints its canonical chain; after enough time to converge, all nodes should print the same longest chain with enough time to converge.
 
 ### Sandbox Testing with the Transaction Bot
 
@@ -219,6 +299,20 @@ python bot_tools/bot_client.py --interval 1.0
 ```
 
 `--interval` controls how often test transactions are generated.
+
+Before using the transaction bot, update `config.py` so that the bot public key is
+treated as the allowed server key. Around line 65, set:
+
+```python
+REGISTER_SERVER_PUBLIC_KEY_HEX = "4c69624e61434c504b3a17646deee961ab394dbff5588ab83b63d112d28f4400cd48924c53be3c5eb87e547b75a13ac43c281c764f4a5135a0d1e87d715d45255f0db4d429447495d910"
+```
+
+The original Lab 3 server public key should be commented out while using the bot.
+Only one `REGISTER_SERVER_PUBLIC_KEY_HEX` value should be active at a time.
+
+This is necessary because incoming server-style messages are filtered by public
+key. If the bot public key is not configured as the allowed server key, bot
+transactions will be ignored.
 
 ## Blockchain Workflow
 
@@ -258,6 +352,8 @@ The tests cover core blockchain behavior, including:
 - Blockchain state is not persisted to disk.
 - Restarting a node resets local blockchain state.
 - Mining difficulty is fixed and does not adjust dynamically.
+- The `all_known_txs` transaction index is not garbage collected and may grow
+  during long-running executions.
 
 ## Additional Documentation
 
