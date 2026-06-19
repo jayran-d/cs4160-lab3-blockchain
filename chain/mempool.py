@@ -79,4 +79,5 @@ class Mempool:
                 self.transactions.pop(tx.tx_hash(), None)
 
     def __len__(self) -> int:
-        return len(self.transactions)
+        with self.lock:
+            return len(self.transactions)

@@ -143,9 +143,6 @@ def compute_txs_hash(tx_hashes: list[bytes]) -> bytes:
     Since b"".join([]) is b"", this works for both normal and empty blocks.
     """
 
-    if len(tx_hashes) == 0:
-        return sha256(b"")
-
     return sha256(b"".join(tx_hashes))
 
 

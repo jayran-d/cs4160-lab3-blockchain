@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import time
 from collections.abc import Callable
 
@@ -35,16 +36,37 @@ class Miner:
         self.max_transactions_per_block = max_transactions_per_block
         self.broadcast_block = broadcast_block
         self.is_running = False
+        self._current_stop_event: threading.Event | None = None
+        self._stop_event_lock = threading.Lock()
 
     async def run_forever(self) -> None:
         self.is_running = True
 
         while self.is_running:
             await asyncio.sleep(self.interval_seconds)
-            self.mine_once()
+            await asyncio.to_thread(self.mine_once)
 
     def stop(self) -> None:
         self.is_running = False
+        self.interrupt_current_mining()
+
+    def interrupt_current_mining(self) -> None:
+        with self._stop_event_lock:
+            if self._current_stop_event is not None:
+                self._current_stop_event.set()
+
+    def _new_stop_event(self) -> threading.Event:
+        stop_event = threading.Event()
+
+        with self._stop_event_lock:
+            self._current_stop_event = stop_event
+
+        return stop_event
+
+    def _clear_stop_event(self, stop_event: threading.Event) -> None:
+        with self._stop_event_lock:
+            if self._current_stop_event is stop_event:
+                self._current_stop_event = None
 
     def mine_once(self) -> Block | None:
         """
@@ -64,12 +86,22 @@ class Miner:
         )
 
         prev_hash = self.blockchain.tip_hash()
-        block = mine_block(
-            prev_hash=prev_hash,
-            transactions=transactions,
-            timestamp=int(time.time()),
-            difficulty=self.difficulty,
-        )
+        stop_event = self._new_stop_event()
+
+        try:
+            block = mine_block(
+                prev_hash=prev_hash,
+                transactions=transactions,
+                timestamp=int(time.time()),
+                difficulty=self.difficulty,
+                should_stop=stop_event.is_set,
+            )
+        finally:
+            self._clear_stop_event(stop_event)
+
+        if block is None:
+            print("Mining stopped before a valid block was found")
+            return None
 
         block_added = self.blockchain.add_block(block)
         if not block_added:

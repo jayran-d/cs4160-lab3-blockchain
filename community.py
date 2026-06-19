@@ -64,6 +64,7 @@ class BlockchainCommunity(Community):
             name.lower(): bytes.fromhex(public_key_hex)
             for name, public_key_hex in MEMBER_PUBLIC_KEYS_HEX.items()
         }
+        self.expected_teammate_key_set = set(self.expected_teammate_keys.values())
 
         # ------------------------------------------------------------------
         # Local blockchain state
@@ -101,7 +102,7 @@ class BlockchainCommunity(Community):
         if self.is_own_peer_key(peer_key):
             return False
 
-        return peer_key in self.expected_teammate_keys.values()
+        return peer_key in self.expected_teammate_key_set
 
     def teammate_name_for_peer(self, peer) -> str | None:
         peer_key = self.peer_public_key(peer)
@@ -241,6 +242,7 @@ class BlockchainCommunity(Community):
 
         if self.mining_task is not None:
             self.mining_task.cancel()
+            self.mining_task = None
 
     # ----------------------------------------------------------------------
     # Lab server query message handlers

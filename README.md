@@ -133,6 +133,12 @@ Mining runs continuously in a background task. At each interval, the miner build
 a candidate block from the current mempool and searches for a valid
 Proof-of-Work nonce.
 
+The nonce search itself runs in a worker thread so that IPv8 message handling can
+continue while a block is being mined. This keeps the node responsive to incoming
+transactions and block gossip. Mining also checks a stop signal every
+`MINING_STOP_CHECK_INTERVAL` nonce attempts, allowing the node to interrupt the
+current search when a teammate's block is received.
+
 ### Transaction Hash-Based Block Gossip
 
 Blocks are gossiped using transaction hashes rather than transmitting the full
@@ -161,17 +167,8 @@ a mining interval of 15 seconds.
 
 These values were chosen as practical parameters for the lab demo. The difficulty
 is high enough that blocks are not mined instantly, but low enough that blocks can
-still be produced reliably. The mining interval prevents nodes from attempting to mine too aggressively, reducing excessive block creation during testing.
-
-### Background Tasks
-
-After startup, the node runs the blockchain community continuously while also
-starting mining as an asynchronous background task. This allows the node to keep
-listening for incoming IPv8 messages while periodically attempting to mine new
-blocks from the mempool.
-
-This design avoids requiring manual user interaction after startup and allows
-networking, transaction handling, block handling, and mining to run concurrently.
+still be produced reliably. The mining interval prevents nodes from attempting to
+mine too aggressively, reducing excessive block creation during testing.
 
 ## Setup
 
@@ -207,6 +204,7 @@ Before running, check the relevant values in `config.py`:
 - `KEY_FILE`
 - `BLOCK_DIFFICULTY`
 - `MINE_BLOCK_PER_SECONDS`
+- `MINING_STOP_CHECK_INTERVAL`
 
 ### Python Version
 
@@ -254,8 +252,6 @@ The remaining group members start their nodes normally:
 ```bash
 python3 client.py
 ```
-
-python3 client.py
 
 After startup, all nodes automatically:
 
@@ -342,6 +338,7 @@ The tests cover core blockchain behavior, including:
 - Proof-of-Work
 - mempool behavior
 - mining
+- mining interruption
 - transaction gossip
 - block gossip
 - fork handling

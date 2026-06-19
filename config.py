@@ -81,8 +81,14 @@ BLOCK_DIFFICULTY = 16
 # SHA-256 hash size in bytes.
 HASH_SIZE = 32
 
+# Maximum leading-zero-bit difficulty for a SHA-256 block hash.
+MAX_POW_DIFFICULTY = HASH_SIZE * 8
+
 # Serialized block header size in bytes.
 HEADER_SIZE = 84
 
 # Mining interval in seconds.
 MINE_BLOCK_PER_SECONDS = 15
+
+# Number of nonce attempts between checks for an external mining stop signal.
+MINING_STOP_CHECK_INTERVAL = 4096

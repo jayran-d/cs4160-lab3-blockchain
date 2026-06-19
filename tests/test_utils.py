@@ -51,6 +51,29 @@ class UtilsTests(unittest.TestCase):
 
         self.assertTrue(valid_pow(block.block_hash(), 12))
 
+    def test_mining_can_be_stopped(self) -> None:
+        # Mining should return without a block when an external stop signal is set.
+        block = mine_block(
+            prev_hash=b"\x00" * 32,
+            transactions=[],
+            timestamp=1,
+            difficulty=256,
+            should_stop=lambda: True,
+            stop_check_interval=1,
+        )
+
+        self.assertIsNone(block)
+
+    def test_mining_stop_interval_must_be_positive(self) -> None:
+        with self.assertRaises(ValueError):
+            mine_block(
+                prev_hash=b"\x00" * 32,
+                transactions=[],
+                timestamp=1,
+                difficulty=1,
+                stop_check_interval=0,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
