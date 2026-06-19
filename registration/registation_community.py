@@ -8,6 +8,7 @@ from config import (
     REGISTER_COMMUNITY_ID_HEX,
     REGISTER_SERVER_PUBLIC_KEY_HEX,
     BLOCKCHAIN_COMMUNITY_ID_HEX,
+    GROUP_ID,
 )
 
 
@@ -22,26 +23,17 @@ class Lab3RegistrationCommunity(Community):
 
         self.server_peer = None
 
-        self.group_id = "d8c9d397bea2ee37"
+        self.group_id = GROUP_ID
 
         self.blockchain_community_id = bytes.fromhex(BLOCKCHAIN_COMMUNITY_ID_HEX)
 
     def peer_public_key(self, peer) -> bytes:
-        """
-        Return an IPv8 peer's public key in the same byte format used by the lab.
-        """
         return peer.public_key.key_to_bin()
 
     def is_server_peer(self, peer) -> bool:
-        """
-        Check whether a peer is the official Lab 3 server.
-        """
         return self.peer_public_key(peer) == self.expected_server_public_key()
 
     def expected_server_public_key(self) -> bytes:
-        """
-        Return the official Lab 3 server public key as bytes.
-        """
         return bytes.fromhex(REGISTER_SERVER_PUBLIC_KEY_HEX)
 
     async def find_server_peer(self):
@@ -62,14 +54,13 @@ class Lab3RegistrationCommunity(Community):
 
                 if actual_public_key == self.expected_server_public_key():
                     self.server_peer = peer
-                    print("=====Found Lab 3 server=====")
+                    print("===== Found Lab 3 server =====")
                     return peer
 
             print("Server peer not found yet.")
             await asyncio.sleep(0.25)
 
-    def register_blockchain(self) -> bool:
-
+    def register_blockchain(self) -> None:
         payload = RegisterBlockchainPayload(
             group_id=self.group_id, community_id=self.blockchain_community_id
         )

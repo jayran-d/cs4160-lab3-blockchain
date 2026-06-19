@@ -8,7 +8,6 @@ from chain.blockchain import Blockchain
 from chain.pretty_print import print_block
 from chain.miner import Miner
 from chain.transaction import Transaction
-from chain.pow import valid_pow
 from payloads import (
     SubmitTransactionPayload,
     SubmitTransactionResponsePayload,
@@ -82,39 +81,21 @@ class BlockchainCommunity(Community):
     # ----------------------------------------------------------------------
 
     def expected_server_public_key(self) -> bytes:
-        """
-        Return the official Lab 3 registration/server public key as bytes.
-        """
         return bytes.fromhex(REGISTER_SERVER_PUBLIC_KEY_HEX)
 
     def peer_public_key(self, peer) -> bytes:
-        """
-        Return an IPv8 peer's public key in the byte format used by the lab.
-        """
         return peer.public_key.key_to_bin()
 
     def own_public_key(self) -> bytes:
-        """
-        Return this node's public key.
-        """
         return self.my_peer.public_key.key_to_bin()
 
     def is_server_peer(self, peer) -> bool:
-        """
-        Check whether a peer is the official Lab 3 server.
-        """
         return self.peer_public_key(peer) == self.expected_server_public_key()
 
     def is_own_peer_key(self, public_key: bytes) -> bool:
-        """
-        Check whether a public key belongs to this node.
-        """
         return public_key == self.own_public_key()
 
     def is_teammate_peer(self, peer) -> bool:
-        """
-        Check whether a peer is one of the known group members, excluding self.
-        """
         peer_key = self.peer_public_key(peer)
 
         if self.is_own_peer_key(peer_key):
@@ -123,9 +104,6 @@ class BlockchainCommunity(Community):
         return peer_key in self.expected_teammate_keys.values()
 
     def teammate_name_for_peer(self, peer) -> str | None:
-        """
-        Return the teammate name for a peer, or None if it is unknown.
-        """
         peer_key = self.peer_public_key(peer)
 
         for name, expected_key in self.expected_teammate_keys.items():
@@ -175,10 +153,6 @@ class BlockchainCommunity(Community):
 
                 if teammate_name is None:
                     continue
-
-                # # Do not store ourselves as a teammate.
-                # if self.is_own_peer_key(self.peer_public_key(peer)):
-                #     continue
 
                 if self.teammate_peers[teammate_name] is None:
                     self.teammate_peers[teammate_name] = peer

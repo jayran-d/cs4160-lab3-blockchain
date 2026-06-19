@@ -6,13 +6,9 @@ commit. Private key files should be stored locally in the keys/ directory and
 ignored by Git.
 """
 
-from pathlib import Path
-
 # ---------------------------------------------------------------------------
 # Local paths
 # ---------------------------------------------------------------------------
-
-# REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Each group member should place their own private IPv8 key at this path.
 # The file itself should NOT be committed.
@@ -29,6 +25,12 @@ GROUP_ID = "d8c9d397bea2ee37"
 # Hex-decoded value: "DarianJayranYvesLab3"
 BLOCKCHAIN_COMMUNITY_ID_HEX = "44617269616E4A617972616E597665734C616233"
 
+# Community ID for the sandbox overlay used by the transaction-bot test setup
+# (client.py --test). Kept separate from BLOCKCHAIN_COMMUNITY_ID_HEX so test
+# traffic never mixes with the production chain used for grading.
+# Hex-decoded value: "DarianJayranYvesBot1"
+BOT_COMMUNITY_ID_HEX = "44617269616e4a617972616e59766573426f7431"
+
 # ---------------------------------------------------------------------------
 # Registration server configuration
 # ---------------------------------------------------------------------------
@@ -37,12 +39,7 @@ BLOCKCHAIN_COMMUNITY_ID_HEX = "44617269616E4A617972616E597665734C616233"
 REGISTER_COMMUNITY_ID_HEX = "4c616233426c6f636b636861696e323032365057"
 
 # Public key of the Lab 3 registration server.
-REGISTER_SERVER_PUBLIC_KEY_HEX = (
-    "4c69624e61434c504b3ae3fc099fb56ca3b5e1de9a1c843387f2acdbb78b1bd4350"
-    "ffde518068a0d246344b10d0d8c355fd0d76873e7d7f7838f3715e025af08f791324495e083331ce6"
-)
-
-BOT_CLIENT_PUBLIC_KEY_HEX = "4c69624e61434c504b3a17646deee961ab394dbff5588ab83b63d112d28f4400cd48924c53be3c5eb87e547b75a13ac43c281c764f4a5135a0d1e87d715d45255f0db4d429447495d910"
+REGISTER_SERVER_PUBLIC_KEY_HEX = "4c69624e61434c504b3a17646deee961ab394dbff5588ab83b63d112d28f4400cd48924c53be3c5eb87e547b75a13ac43c281c764f4a5135a0d1e87d715d45255f0db4d429447495d910"
 
 # ---------------------------------------------------------------------------
 # Group member public keys
@@ -87,4 +84,4 @@ HASH_SIZE = 32
 HEADER_SIZE = 84
 
 # Mining interval in seconds.
-MINE_BLOCK_PER_SECONDS = 30
+MINE_BLOCK_PER_SECONDS = 15

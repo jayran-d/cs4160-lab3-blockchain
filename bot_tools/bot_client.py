@@ -17,8 +17,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
-from bot_community import BotBlockchainCommunity
-from transaction_bot import TransactionBot
+from bot_tools.bot_community import BotBlockchainCommunity
+from bot_tools.transaction_bot import TransactionBot
 
 KEY_FILE = str(REPO_ROOT / "keys" / "bot_identity_key.pem")
 
@@ -77,7 +77,7 @@ async def main(interval: float) -> None:
 
     try:
         await bot_blockchain_community.find_teammate_peers()
-        # bot_blockchain_community.start_mining()
+        # The bot only generates and gossips test transactions; it does not mine.
 
         print(f"Starting transaction bot with interval {interval} seconds...")
         bot = TransactionBot(

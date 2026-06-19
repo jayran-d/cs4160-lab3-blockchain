@@ -38,6 +38,7 @@ tested without running a live IPv8 network.
 | `chain/miner.py`       | Periodically mines blocks from the mempool.                                                |
 | `chain/blockchain.py`  | Stores blocks, validates new blocks, handles forks, and tracks the canonical chain.        |
 | `chain/pow.py`         | Implements Proof-of-Work mining and validation.                                            |
+| `bot_tools/`           | Sandbox overlay and transaction bot for testing without touching the production chain.     |
 | `tests/`               | Contains unit and simulation tests for the main behavior.                                  |
 
 Important design decisions:
@@ -114,6 +115,31 @@ python client.py --register
 This registers the configured blockchain community with the Lab 3 server. If the
 server check fails because nodes were offline or not synchronized yet, keep the
 nodes running and register again.
+
+## Sandbox testing with the transaction bot
+
+To exercise mempool, mining, and gossip behavior without touching the
+production chain used for grading, run the node with `--test`:
+
+```bash
+source .venv/bin/activate
+python client.py --test
+```
+
+This starts a second overlay (`BotBlockchainCommunity`, its own `community_id`
+configured in `config.py`) alongside the real one. A `TransactionBot` generates
+signed test transactions on an interval (`--test-interval`, default 1 second)
+and gossips them to the other teammates' sandbox overlays. All three group
+members should pass `--test` for the sandbox chain to converge. On shutdown,
+both the production chain and the sandbox chain are printed separately.
+
+You can also run just the sandbox overlay, without the production chain, using
+`bot_tools/bot_client.py`:
+
+```bash
+source .venv/bin/activate
+python bot_tools/bot_client.py
+```
 
 ## Running tests
 

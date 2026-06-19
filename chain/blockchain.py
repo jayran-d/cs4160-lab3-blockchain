@@ -1,5 +1,4 @@
 import threading
-from hashlib import sha256
 
 from chain.block import Block, create_genesis_block
 

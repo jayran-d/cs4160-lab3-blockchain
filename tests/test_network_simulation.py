@@ -1,6 +1,6 @@
 from chain.blockchain import Blockchain
 from chain.pow import mine_block
-from config import BLOCK_DIFFICULTY, HASH_SIZE
+from config import BLOCK_DIFFICULTY
 
 def mine_test_block(prev_hash: bytes, transactions=None, timestamp: int = 1):
     # Helper for mining low-difficulty test blocks.

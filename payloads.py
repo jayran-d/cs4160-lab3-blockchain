@@ -70,12 +70,16 @@ class BlockResponsePayload(DataClassPayloadWID):
 
     msg_id = 6
 
-    format_list = [
-        "q", "varlenH", "varlenH", "q", "q", "q", "varlenH", "varlenH"
-    ]
+    format_list = ["q", "varlenH", "varlenH", "q", "q", "q", "varlenH", "varlenH"]
     names = [
-        "height", "prev_hash", "txs_hash", "timestamp", "difficulty", "nonce",
-        "block_hash", "tx_hashes"
+        "height",
+        "prev_hash",
+        "txs_hash",
+        "timestamp",
+        "difficulty",
+        "nonce",
+        "block_hash",
+        "tx_hashes",
     ]
 
     height: int
@@ -93,12 +97,15 @@ class BlockGossipPayload(DataClassPayloadWID):
 
     msg_id = 7
 
-    format_list = [
-        "varlenH", "varlenH", "q", "q", "q", "varlenH", "varlenH"
-    ]
+    format_list = ["varlenH", "varlenH", "q", "q", "q", "varlenH", "varlenH"]
     names = [
-        "prev_hash", "txs_hash", "timestamp", "difficulty", "nonce",
-        "block_hash", "tx_hashes"
+        "prev_hash",
+        "txs_hash",
+        "timestamp",
+        "difficulty",
+        "nonce",
+        "block_hash",
+        "tx_hashes",
     ]
 
     prev_hash: bytes
