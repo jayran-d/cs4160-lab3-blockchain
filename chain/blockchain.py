@@ -39,6 +39,9 @@ class Blockchain:
         self.best_tip_hash: bytes = genesis_hash
         self.best_tip_height: int = 0
 
+        # Canonical transaction index: tx_hash -> canonical block height.
+        self.canonical_tx_height: dict[bytes, int] = {}
+
         # Blocks received before their parent: missing_parent_hash -> [blocks]
         self.pending_blocks: dict[bytes, list[Block]] = {}
 
@@ -89,6 +92,7 @@ class Blockchain:
 
             if parent_hash == self.best_tip_hash:
                 self._append_to_canonical_chain(block_hash, height)
+                self._index_block_transactions(block, height)
                 self._remove_block_transactions_from_mempool(block)
                 print(
                     "Accepted block on canonical chain: "
@@ -96,9 +100,12 @@ class Blockchain:
                     f"tx_count={len(block.tx_hashes())}"
                 )
             elif height > self.best_tip_height:
-                old_canonical_blocks = self._canonical_blocks()
-                self._apply_longest_chain_rule(block_hash, height)
-                self._sync_mempool_after_canonical_change(old_canonical_blocks)
+                old_removed_blocks, new_added_blocks = self._reorg_blocks(block_hash)
+                self._apply_chain_reorg(block_hash, height, new_added_blocks)
+                self._sync_mempool_after_canonical_change(
+                    old_removed_blocks,
+                    new_added_blocks,
+                )
                 print(
                     "Switched to longer chain: "
                     f"height={height}, block_hash={block_hash.hex()}, "
@@ -136,7 +143,7 @@ class Blockchain:
         """True if tx_hash is buried under at least `confirmations` blocks."""
 
         with self.lock:
-            tx_block_height = self._find_tx_height_in_chain(tx_hash)
+            tx_block_height = self.canonical_tx_height.get(tx_hash)
 
             if tx_block_height is None:
                 return False
@@ -145,7 +152,7 @@ class Blockchain:
 
     def tx_in_canonical_chain(self, tx_hash: bytes) -> bool:
         with self.lock:
-            return self._find_tx_height_in_chain(tx_hash) is not None
+            return tx_hash in self.canonical_tx_height
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -183,28 +190,17 @@ class Blockchain:
                 f"block_txs={self._format_hashes(block.tx_hashes())}"
             )
 
-    def _apply_longest_chain_rule(
-        self, new_tip_hash: bytes, new_tip_height: int
+    def _apply_chain_reorg(
+        self,
+        new_tip_hash: bytes,
+        new_tip_height: int,
+        new_added_blocks: list[Block],
     ) -> None:
         """
-        Make the chain ending at new_tip_hash canonical if it is the longest chain.
-
-        This rebuilds chain_by_height by walking backward from the new tip to genesis.
+        Make a longer fork canonical by updating only the changed fork segment.
         """
-        new_chain: list[tuple[int, bytes]] = []
-        cursor = new_tip_hash
-
-        while cursor in self.blocks_by_hash:
-            height = self.height_by_hash[cursor]
-            new_chain.append((height, cursor))
-
-            if height == 0:
-                break
-
-            cursor = self.blocks_by_hash[cursor].prev_hash()
-
-        for height, block_hash in new_chain:
-            self.chain_by_height[height] = self.blocks_by_hash[block_hash]
+        for block in new_added_blocks:
+            self.chain_by_height[self.height_by_hash[block.block_hash()]] = block
 
         self.best_tip_hash = new_tip_hash
         self.best_tip_height = new_tip_height
@@ -215,32 +211,76 @@ class Blockchain:
         for block in self.pending_blocks.pop(parent_hash, []):
             self.add_block(block)
 
-    def _canonical_blocks(self) -> list[Block]:
-        return [
-            self.chain_by_height[height]
-            for height in range(self.best_tip_height + 1)
-            if height in self.chain_by_height
-        ]
+    def _reorg_blocks(self, new_tip_hash: bytes) -> tuple[list[Block], list[Block]]:
+        """
+        Return only the old and new fork segments affected by a reorg.
+
+        The common ancestor is excluded from both lists.
+        """
+        old_removed: list[Block] = []
+        new_added: list[Block] = []
+
+        old_cursor = self.best_tip_hash
+        new_cursor = new_tip_hash
+        old_height = self.best_tip_height
+        new_height = self.height_by_hash[new_tip_hash]
+
+        while old_height > new_height:
+            old_removed.append(self.blocks_by_hash[old_cursor])
+            old_cursor = self.blocks_by_hash[old_cursor].prev_hash()
+            old_height -= 1
+
+        while new_height > old_height:
+            new_added.append(self.blocks_by_hash[new_cursor])
+            new_cursor = self.blocks_by_hash[new_cursor].prev_hash()
+            new_height -= 1
+
+        while old_cursor != new_cursor:
+            old_removed.append(self.blocks_by_hash[old_cursor])
+            new_added.append(self.blocks_by_hash[new_cursor])
+
+            old_cursor = self.blocks_by_hash[old_cursor].prev_hash()
+            new_cursor = self.blocks_by_hash[new_cursor].prev_hash()
+
+        return old_removed, new_added
+
+    def _index_block_transactions(self, block: Block, height: int) -> None:
+        for tx_hash in block.tx_hashes():
+            self.canonical_tx_height[tx_hash] = height
+
+    def _unindex_block_transactions(self, block: Block) -> None:
+        for tx_hash in block.tx_hashes():
+            self.canonical_tx_height.pop(tx_hash, None)
 
     def _sync_mempool_after_canonical_change(
         self,
-        old_canonical_blocks: list[Block],
+        old_removed_blocks: list[Block],
+        new_added_blocks: list[Block],
     ) -> None:
         """
-        Restore txs from old canonical blocks that fell out of the best chain,
-        then remove txs now included in the current canonical chain.
+        Restore txs from replaced blocks and remove txs from newly canonical blocks.
         """
         before_hashes = self._mempool_tx_hashes()
-        new_canonical_tx_hashes = self._canonical_tx_hashes()
-        old_transactions = self._full_transactions_by_hash(old_canonical_blocks)
+        old_transactions = self._full_transactions_by_hash(old_removed_blocks)
+        new_added_tx_hashes = set()
         restored_hashes = set()
 
+        for block in old_removed_blocks:
+            self._unindex_block_transactions(block)
+
+        for block in new_added_blocks:
+            self._index_block_transactions(
+                block,
+                self.height_by_hash[block.block_hash()],
+            )
+            new_added_tx_hashes.update(block.tx_hashes())
+
         for tx_hash, transaction in old_transactions.items():
-            if tx_hash not in new_canonical_tx_hashes:
+            if tx_hash not in self.canonical_tx_height:
                 self.mempool.add(transaction)
                 restored_hashes.add(tx_hash)
 
-        for tx_hash in new_canonical_tx_hashes:
+        for tx_hash in new_added_tx_hashes:
             self.mempool.remove(tx_hash)
 
         after_hashes = self._mempool_tx_hashes()
@@ -251,16 +291,8 @@ class Blockchain:
             f"before={len(before_hashes)}, after={len(after_hashes)}, "
             f"restored_from_old_chain={self._format_hashes(restored_hashes)}, "
             f"removed_for_new_chain={self._format_hashes(removed_hashes)}, "
-            f"new_chain_txs={self._format_hashes(new_canonical_tx_hashes)}"
+            f"new_chain_txs={self._format_hashes(new_added_tx_hashes)}"
         )
-
-    def _canonical_tx_hashes(self) -> set[bytes]:
-        tx_hashes = set()
-
-        for block in self._canonical_blocks():
-            tx_hashes.update(block.tx_hashes())
-
-        return tx_hashes
 
     def _full_transactions_by_hash(
         self,
@@ -273,17 +305,6 @@ class Blockchain:
                 transactions[transaction.tx_hash()] = transaction
 
         return transactions
-
-    def _find_tx_height_in_chain(self, tx_hash: bytes) -> int | None:
-        """Return the canonical-chain height of the block containing tx_hash."""
-
-        for height in range(self.best_tip_height + 1):
-            block = self.chain_by_height.get(height)
-
-            if block and tx_hash in block.tx_hashes():
-                return height
-
-        return None
 
     def _mempool_tx_hashes(self) -> set[bytes]:
         return {transaction.tx_hash() for transaction in self.mempool.get_all()}
