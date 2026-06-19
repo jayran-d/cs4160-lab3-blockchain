@@ -33,8 +33,7 @@ BLOCKCHAIN_COMMUNITY_ID_HEX = "44617269616E4A617972616E597665734C616233"
 REGISTER_COMMUNITY_ID_HEX = "4c616233426c6f636b636861696e323032365057"
 
 # Public key of the Lab 3 registration server.
-REGISTER_SERVER_PUBLIC_KEY_HEX = "4c69624e61434c504b3a17646deee961ab394dbff5588ab83b63d112d28f4400cd48924c53be3c5eb87e547b75a13ac43c281c764f4a5135a0d1e87d715d45255f0db4d429447495d910"
-
+REGISTER_SERVER_PUBLIC_KEY_HEX = "4c69624e61434c504b3ae3fc099fb56ca3b5e1de9a1c843387f2acdbb78b1bd4350ffde518068a0d246344b10d0d8c355fd0d76873e7d7f7838f3715e025af08f791324495e083331ce6"
 # ---------------------------------------------------------------------------
 # Group member public keys
 # ---------------------------------------------------------------------------
