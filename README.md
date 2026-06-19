@@ -211,16 +211,14 @@ Ctrl+C
 
 ### Sandbox Testing with the Transaction Bot
 
-`bot_tools/bot_client.py` runs a standalone node on its own overlay
-(`BotBlockchainCommunity`, its own `community_id` configured in `config.py`). It generates and
-gossips signed test transactions on an interval. Run it with:
+`bot_tools/bot_client.py` is a local testing tool that sends signed test
+transactions to the running blockchain nodes. Run it with:
 
 ```bash
 python bot_tools/bot_client.py --interval 1.0
 ```
 
-`--interval` controls the number of seconds between locally generated test
-transactions (default 1 second).
+`--interval` controls how often test transactions are generated.
 
 ## Blockchain Workflow
 

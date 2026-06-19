@@ -25,11 +25,8 @@ GROUP_ID = "d8c9d397bea2ee37"
 # Hex-decoded value: "DarianJayranYvesLab3"
 BLOCKCHAIN_COMMUNITY_ID_HEX = "44617269616E4A617972616E597665734C616233"
 
-# Community ID for the sandbox overlay used by the transaction-bot test setup
-# (client.py --test). Kept separate from BLOCKCHAIN_COMMUNITY_ID_HEX so test
-# traffic never mixes with the production chain used for grading.
-# Hex-decoded value: "DarianJayranYvesBot1"
-BOT_COMMUNITY_ID_HEX = "44617269616e4a617972616e59766573426f7431"
+# Community ID for our blockchain overlay, used for bot registration.
+BOT_COMMUNITY_ID_HEX = "44617269616E4A617972616E597665734C616233"
 
 # ---------------------------------------------------------------------------
 # Registration server configuration
