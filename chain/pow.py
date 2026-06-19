@@ -3,7 +3,12 @@ from hashlib import sha256
 
 from chain.block import Block, BlockHeader, compute_txs_hash
 from chain.transaction import Transaction
-from config import BLOCK_DIFFICULTY, HASH_SIZE
+from config import (
+    BLOCK_DIFFICULTY,
+    HASH_SIZE,
+    MAX_POW_DIFFICULTY,
+    MINING_STOP_CHECK_INTERVAL,
+)
 from chain.utils import u32_be, u64_be
 
 
@@ -48,14 +53,17 @@ def valid_pow(block_hash: bytes, difficulty: int) -> bool:
         )
         return False
 
-    if difficulty < 0 or difficulty > 256:
-        print(f"Invalid difficulty: {difficulty}. Must be between 0 and 256.")
+    if difficulty < 0 or difficulty > MAX_POW_DIFFICULTY:
+        print(
+            f"Invalid difficulty: {difficulty}. "
+            f"Must be between 0 and {MAX_POW_DIFFICULTY}."
+        )
         return False
 
     if difficulty == 0:
         return True
 
-    return int.from_bytes(block_hash, "big") < (1 << (HASH_SIZE * 8 - difficulty))
+    return int.from_bytes(block_hash, "big") < (1 << (MAX_POW_DIFFICULTY - difficulty))
 
 
 def mine_block(
@@ -64,19 +72,27 @@ def mine_block(
     timestamp: int,
     difficulty: int = BLOCK_DIFFICULTY,
     should_stop: Callable[[], bool] | None = None,
+    stop_check_interval: int = MINING_STOP_CHECK_INTERVAL,
 ) -> Block | None:
     if len(prev_hash) != HASH_SIZE:
         raise ValueError(f"prev_hash must be exactly {HASH_SIZE} bytes")
 
-    if difficulty < 0 or difficulty > HASH_SIZE * 8:
-        raise ValueError(f"difficulty must be between 0 and {HASH_SIZE * 8}")
+    if difficulty < 0 or difficulty > MAX_POW_DIFFICULTY:
+        raise ValueError(f"difficulty must be between 0 and {MAX_POW_DIFFICULTY}")
+
+    if stop_check_interval <= 0:
+        raise ValueError("stop_check_interval must be positive")
 
     txs_hash = compute_txs_hash([tx.tx_hash() for tx in transactions])
     header_prefix = prev_hash + txs_hash + u64_be(timestamp) + u32_be(difficulty)
     nonce = 0
 
     while True:
-        if should_stop is not None and nonce % 4096 == 0 and should_stop():
+        if (
+            should_stop is not None
+            and nonce % stop_check_interval == 0
+            and should_stop()
+        ):
             return None
 
         block_hash = sha256(header_prefix + u64_be(nonce)).digest()
