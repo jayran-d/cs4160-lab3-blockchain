@@ -9,8 +9,8 @@ the longest-chain consensus rule.
 
 The implementation was developed as part of the Blockchain Engineering (CS4160)
 course. The full assignment description is kept separately in
-`ASSIGNMENTREADME.md`; this README focuses on how our implementation works and
-how to run it.
+`docs/LAB-DESCRIPTION.md`; this README focuses on how our implementation works
+and how to run it.
 
 ## Features
 
@@ -209,32 +209,18 @@ Stop a node with:
 Ctrl+C
 ```
 
-# Sandbox testing with the transaction bot
+### Sandbox Testing with the Transaction Bot
 
-To exercise mempool, mining, and gossip behavior without touching the
-production chain used for grading, run the node with `--test`:
-
-```bash
-source .venv/bin/activate
-python client.py --test
-```
-
-This starts a second overlay (`BotBlockchainCommunity`, its own `community_id`
-configured in `config.py`) alongside the real one. A `TransactionBot` generates
-signed test transactions on an interval (`--test-interval`, default 1 second)
-and gossips them to the other teammates' sandbox overlays. All three group
-members should pass `--test` for the sandbox chain to converge. On shutdown,
-both the production chain and the sandbox chain are printed separately.
-
-You can also run just the sandbox overlay, without the production chain, using
-`bot_tools/bot_client.py`:
+`bot_tools/bot_client.py` runs a standalone node on its own overlay
+(`BotBlockchainCommunity`, its own `community_id` configured in `config.py`). It generates and
+gossips signed test transactions on an interval. Run it with:
 
 ```bash
-source .venv/bin/activate
-python bot_tools/bot_client.py
+python bot_tools/bot_client.py --interval 1.0
 ```
 
-On shutdown, the client prints the final local chain for inspection.
+`--interval` controls the number of seconds between locally generated test
+transactions (default 1 second).
 
 ## Blockchain Workflow
 
