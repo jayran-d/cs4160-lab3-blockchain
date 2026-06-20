@@ -1,5 +1,7 @@
 # CS4160 Lab 3 - Decentralized Proof-of-Work Blockchain
 
+# Bonus Assignment Branch
+
 ## Overview
 
 This project implements a decentralized Proof-of-Work blockchain using IPv8. The
