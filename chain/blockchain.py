@@ -1,5 +1,6 @@
 import math
 import threading
+import time
 from statistics import median
 
 from chain.block import Block, create_genesis_block
@@ -8,6 +9,7 @@ from chain.mempool import Mempool
 from chain.pow import valid_pow
 from chain.transaction import Transaction
 from config import (
+    ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS,
     BLOCK_DIFFICULTY,
     BLOCK_TIME_TOLERANCE_RATIO,
     DIFFICULTY_ADJUSTMENT_WINDOW_SIZE,
@@ -94,6 +96,9 @@ class Blockchain:
                     "Stored orphan block waiting for parent: "
                     f"block_hash={block_hash.hex()}, parent_hash={parent_hash.hex()}"
                 )
+                return False
+
+            if not self._valid_block_timestamp(block, parent_hash):
                 return False
 
             parent_height = self.height_by_hash[parent_hash]
@@ -207,6 +212,52 @@ class Blockchain:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _valid_block_timestamp(self, block: Block, parent_hash: bytes) -> bool:
+        parent = self.blocks_by_hash[parent_hash]
+        median_recent_timestamp = median(self._recent_block_timestamps(parent_hash))
+
+        if block.header.timestamp <= parent.header.timestamp:
+            print(
+                "Ignoring block with non-increasing timestamp: "
+                f"timestamp={block.header.timestamp}, "
+                f"parent_timestamp={parent.header.timestamp}"
+            )
+            return False
+
+        if block.header.timestamp <= median_recent_timestamp:
+            print(
+                "Ignoring block behind recent median timestamp: "
+                f"timestamp={block.header.timestamp}, "
+                f"median_recent_timestamp={median_recent_timestamp}"
+            )
+            return False
+
+        max_allowed_timestamp = int(time.time()) + ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS
+
+        if block.header.timestamp > max_allowed_timestamp:
+            print(
+                "Ignoring block with future timestamp: "
+                f"timestamp={block.header.timestamp}, max={max_allowed_timestamp}"
+            )
+            return False
+
+        return True
+
+    def _recent_block_timestamps(self, parent_hash: bytes) -> list[int]:
+        timestamps: list[int] = []
+        cursor_hash = parent_hash
+
+        while len(timestamps) < DIFFICULTY_ADJUSTMENT_WINDOW_SIZE:
+            cursor = self.blocks_by_hash[cursor_hash]
+            timestamps.append(cursor.header.timestamp)
+
+            if self.height_by_hash[cursor_hash] == 0:
+                break
+
+            cursor_hash = cursor.prev_hash()
+
+        return timestamps
 
     def _recent_clamped_block_intervals(self, parent_hash: bytes) -> list[int]:
         intervals: list[int] = []

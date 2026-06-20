@@ -181,7 +181,8 @@ The defaults are chosen for a 3-node laptop chain: a
 15-second target leaves time for gossip, a 5-block window smooths one lucky block
 without reacting too slowly, and a 12 to 24 difficulty range keeps a steady range
 for this setup. The next difficulty is computed deterministically from recent
-chain history and clamped to avoid sudden jumps.
+chain history and clamped to avoid sudden jumps. Blocks must also move forward
+relative to recent median chain time and cannot be too far in the future.
 
 ## Setup
 
