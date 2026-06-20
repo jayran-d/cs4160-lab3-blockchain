@@ -75,7 +75,7 @@ MEMBER_PUBLIC_KEYS_HEX = {
 # Blockchain parameters
 # ---------------------------------------------------------------------------
 
-# Number of leading zero bits required in a valid block hash.
+# Initial number of leading zero bits required in a valid block hash.
 BLOCK_DIFFICULTY = 16
 
 # SHA-256 hash size in bytes.
@@ -87,8 +87,26 @@ MAX_POW_DIFFICULTY = HASH_SIZE * 8
 # Serialized block header size in bytes.
 HEADER_SIZE = 84
 
+# Target average time between mined blocks.
+TARGET_BLOCK_TIME_SECONDS = 15
+
+# Number of recent blocks used to estimate whether difficulty should change.
+DIFFICULTY_ADJUSTMENT_WINDOW_SIZE = 5
+
+# Lowest difficulty accepted for adaptive Proof-of-Work blocks.
+MIN_BLOCK_DIFFICULTY = 12
+
+# Highest difficulty accepted for adaptive Proof-of-Work blocks.
+MAX_BLOCK_DIFFICULTY = 24
+
+# Largest difficulty step allowed during one retarget.
+MAX_DIFFICULTY_CHANGE_PER_BLOCK = 2
+
+# Maximum accepted future timestamp skew, in seconds.
+ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS = 30
+
 # Mining interval in seconds.
-MINE_BLOCK_PER_SECONDS = 15
+MINE_BLOCK_PER_SECONDS = TARGET_BLOCK_TIME_SECONDS
 
 # Number of nonce attempts between checks for an external mining stop signal.
 MINING_STOP_CHECK_INTERVAL = 4096

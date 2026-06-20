@@ -162,15 +162,23 @@ every block message.
 This approach reduces network overhead while still allowing peers to reconstruct
 and verify received blocks.
 
-### Mining Difficulty and Mining Interval
+### Adaptive Difficulty Parameters
 
-The blockchain uses a fixed Proof-of-Work difficulty of 16 leading zero bits and
-a mining interval of 15 seconds.
+Difficulty tuning values are centralized in `config.py`:
 
-These values were chosen as practical parameters for the lab demo. The difficulty
-is high enough that blocks are not mined instantly, but low enough that blocks can
-still be produced reliably. The mining interval prevents nodes from attempting to
-mine too aggressively, reducing excessive block creation during testing.
+| Parameter                                | Default | Purpose                                                     |
+| ---------------------------------------- | ------: | ----------------------------------------------------------- |
+| `BLOCK_DIFFICULTY`                       |      16 | Initial difficulty for the first mined block after genesis. |
+| `TARGET_BLOCK_TIME_SECONDS`              |      15 | Target time between blocks.                                 |
+| `DIFFICULTY_ADJUSTMENT_WINDOW_SIZE`      |       5 | Number of recent blocks used for retargeting.               |
+| `MIN_BLOCK_DIFFICULTY`                   |      12 | Lowest accepted lab-chain difficulty.                       |
+| `MAX_BLOCK_DIFFICULTY`                   |      24 | Highest accepted lab-chain difficulty.                      |
+| `MAX_DIFFICULTY_CHANGE_PER_BLOCK`        |       2 | Largest difficulty step after each adjustment window.       |
+| `ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS` |      30 | Clock skew tolerated for future-dated blocks.               |
+
+The defaults are chosen for a 3-node laptop chain: a
+15-second target leaves time for gossip, a 5-block window smooths one lucky block
+without reacting too slowly, and a 12 to 24 difficulty range keeps a steady range for this setup. The timestamp drift limit is for future adaptive validation: it prevents one miner from pushing retargeting with obviously future dated blocks.
 
 ## Setup
 
