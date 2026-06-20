@@ -102,6 +102,15 @@ MAX_BLOCK_DIFFICULTY = 24
 # Largest difficulty step allowed during one retarget.
 MAX_DIFFICULTY_CHANGE_PER_BLOCK = 2
 
+# Relative block-time error tolerated before difficulty changes.
+BLOCK_TIME_TOLERANCE_RATIO = 0.20
+
+# Smallest block interval used by adaptive difficulty estimation.
+MIN_OBSERVED_BLOCK_TIME_SECONDS = 3
+
+# Largest block interval used by adaptive difficulty estimation.
+MAX_OBSERVED_BLOCK_TIME_SECONDS = 60
+
 # Maximum accepted future timestamp skew, in seconds.
 ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS = 30
 

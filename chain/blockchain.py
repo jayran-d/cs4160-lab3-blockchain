@@ -1,10 +1,25 @@
+import math
 import threading
+import time
+from statistics import median
 
 from chain.block import Block, create_genesis_block
 
 from chain.mempool import Mempool
 from chain.pow import valid_pow
 from chain.transaction import Transaction
+from config import (
+    ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS,
+    BLOCK_DIFFICULTY,
+    BLOCK_TIME_TOLERANCE_RATIO,
+    DIFFICULTY_ADJUSTMENT_WINDOW_SIZE,
+    MAX_BLOCK_DIFFICULTY,
+    MAX_DIFFICULTY_CHANGE_PER_BLOCK,
+    MAX_OBSERVED_BLOCK_TIME_SECONDS,
+    MIN_BLOCK_DIFFICULTY,
+    MIN_OBSERVED_BLOCK_TIME_SECONDS,
+    TARGET_BLOCK_TIME_SECONDS,
+)
 
 
 class Blockchain:
@@ -83,6 +98,9 @@ class Blockchain:
                 )
                 return False
 
+            if not self._valid_block_timestamp(block, parent_hash):
+                return False
+
             parent_height = self.height_by_hash[parent_hash]
             height = parent_height + 1
 
@@ -139,6 +157,43 @@ class Blockchain:
     def height(self) -> int:
         return self.best_tip_height
 
+    def next_difficulty(self, parent_hash: bytes | None = None) -> int:
+        """
+        Deterministically calculate the required difficulty for the next block.
+        """
+        with self.lock:
+            if parent_hash is None:
+                parent_hash = self.best_tip_hash
+
+            parent = self.blocks_by_hash[parent_hash]
+            parent_height = self.height_by_hash[parent_hash]
+
+            if parent_height == 0:
+                return self._clamp_difficulty(BLOCK_DIFFICULTY)
+
+            intervals = self._recent_clamped_block_intervals(parent_hash)
+            parent_difficulty = self._clamp_difficulty(parent.header.difficulty)
+
+            if len(intervals) < DIFFICULTY_ADJUSTMENT_WINDOW_SIZE:
+                return parent_difficulty
+
+            observed_block_time = median(intervals)
+            lower_target = TARGET_BLOCK_TIME_SECONDS * (1 - BLOCK_TIME_TOLERANCE_RATIO)
+            upper_target = TARGET_BLOCK_TIME_SECONDS * (1 + BLOCK_TIME_TOLERANCE_RATIO)
+
+            if observed_block_time < lower_target:
+                delta = self._difficulty_step(
+                    TARGET_BLOCK_TIME_SECONDS / observed_block_time
+                )
+            elif observed_block_time > upper_target:
+                delta = -self._difficulty_step(
+                    observed_block_time / TARGET_BLOCK_TIME_SECONDS
+                )
+            else:
+                delta = 0
+
+            return self._clamp_difficulty(parent_difficulty + delta)
+
     def tx_confirmed(self, tx_hash: bytes, confirmations: int = 3) -> bool:
         """True if tx_hash is buried under at least `confirmations` blocks."""
 
@@ -157,6 +212,84 @@ class Blockchain:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _valid_block_timestamp(self, block: Block, parent_hash: bytes) -> bool:
+        parent = self.blocks_by_hash[parent_hash]
+        median_recent_timestamp = median(self._recent_block_timestamps(parent_hash))
+
+        if block.header.timestamp <= parent.header.timestamp:
+            print(
+                "Ignoring block with non-increasing timestamp: "
+                f"timestamp={block.header.timestamp}, "
+                f"parent_timestamp={parent.header.timestamp}"
+            )
+            return False
+
+        if block.header.timestamp <= median_recent_timestamp:
+            print(
+                "Ignoring block behind recent median timestamp: "
+                f"timestamp={block.header.timestamp}, "
+                f"median_recent_timestamp={median_recent_timestamp}"
+            )
+            return False
+
+        max_allowed_timestamp = int(time.time()) + ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS
+
+        if block.header.timestamp > max_allowed_timestamp:
+            print(
+                "Ignoring block with future timestamp: "
+                f"timestamp={block.header.timestamp}, max={max_allowed_timestamp}"
+            )
+            return False
+
+        return True
+
+    def _recent_block_timestamps(self, parent_hash: bytes) -> list[int]:
+        timestamps: list[int] = []
+        cursor_hash = parent_hash
+
+        while len(timestamps) < DIFFICULTY_ADJUSTMENT_WINDOW_SIZE:
+            cursor = self.blocks_by_hash[cursor_hash]
+            timestamps.append(cursor.header.timestamp)
+
+            if self.height_by_hash[cursor_hash] == 0:
+                break
+
+            cursor_hash = cursor.prev_hash()
+
+        return timestamps
+
+    def _recent_clamped_block_intervals(self, parent_hash: bytes) -> list[int]:
+        intervals: list[int] = []
+        cursor_hash = parent_hash
+
+        while (
+            len(intervals) < DIFFICULTY_ADJUSTMENT_WINDOW_SIZE
+            and self.height_by_hash[cursor_hash] > 0
+        ):
+            cursor = self.blocks_by_hash[cursor_hash]
+            previous = self.blocks_by_hash[cursor.prev_hash()]
+            raw_interval = cursor.header.timestamp - previous.header.timestamp
+            intervals.append(
+                self._clamp(
+                    raw_interval,
+                    MIN_OBSERVED_BLOCK_TIME_SECONDS,
+                    MAX_OBSERVED_BLOCK_TIME_SECONDS,
+                )
+            )
+            cursor_hash = cursor.prev_hash()
+
+        return intervals
+
+    def _difficulty_step(self, ratio: float) -> int:
+        step = max(1, math.ceil(math.log2(ratio)))
+        return min(step, MAX_DIFFICULTY_CHANGE_PER_BLOCK)
+
+    def _clamp_difficulty(self, difficulty: int) -> int:
+        return self._clamp(difficulty, MIN_BLOCK_DIFFICULTY, MAX_BLOCK_DIFFICULTY)
+
+    def _clamp(self, value: int, lower: int, upper: int) -> int:
+        return max(lower, min(upper, value))
 
     def _append_to_canonical_chain(
         self,

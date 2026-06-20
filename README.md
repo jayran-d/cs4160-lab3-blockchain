@@ -174,11 +174,17 @@ Difficulty tuning values are centralized in `config.py`:
 | `MIN_BLOCK_DIFFICULTY`                   |      12 | Lowest accepted lab-chain difficulty.                       |
 | `MAX_BLOCK_DIFFICULTY`                   |      24 | Highest accepted lab-chain difficulty.                      |
 | `MAX_DIFFICULTY_CHANGE_PER_BLOCK`        |       2 | Largest difficulty step after each adjustment window.       |
+| `BLOCK_TIME_TOLERANCE_RATIO`             |    0.20 | Timing error tolerated before retargeting.                  |
+| `MIN_OBSERVED_BLOCK_TIME_SECONDS`        |       3 | Smallest interval used by retargeting.                      |
+| `MAX_OBSERVED_BLOCK_TIME_SECONDS`        |      60 | Largest interval used by retargeting.                       |
 | `ALLOWED_FUTURE_TIMESTAMP_DRIFT_SECONDS` |      30 | Clock skew tolerated for future-dated blocks.               |
 
 The defaults are chosen for a 3-node laptop chain: a
 15-second target leaves time for gossip, a 5-block window smooths one lucky block
-without reacting too slowly, and a 12 to 24 difficulty range keeps a steady range for this setup. The timestamp drift limit is for future adaptive validation: it prevents one miner from pushing retargeting with obviously future dated blocks.
+without reacting too slowly, and a 12 to 24 difficulty range keeps a steady range
+for this setup. The next difficulty is computed deterministically from recent
+chain history and clamped to avoid sudden jumps. Blocks must also move forward
+relative to recent median chain time and cannot be too far in the future.
 
 ## Setup
 

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from chain.block import Block
 from chain.blockchain import Blockchain
 from chain.pow import mine_block
-from config import BLOCK_DIFFICULTY, MINE_BLOCK_PER_SECONDS
+from config import MINE_BLOCK_PER_SECONDS
 
 
 class Miner:
@@ -26,7 +26,7 @@ class Miner:
         self,
         blockchain: Blockchain,
         interval_seconds: int = MINE_BLOCK_PER_SECONDS,
-        difficulty: int = BLOCK_DIFFICULTY,
+        difficulty: int | None = None,
         max_transactions_per_block: int | None = None,
         broadcast_block: Callable[[Block], None] | None = None,
     ):
@@ -86,6 +86,11 @@ class Miner:
         )
 
         prev_hash = self.blockchain.tip_hash()
+        difficulty = (
+            self.difficulty
+            if self.difficulty is not None
+            else self.blockchain.next_difficulty(prev_hash)
+        )
         stop_event = self._new_stop_event()
 
         try:
@@ -93,7 +98,7 @@ class Miner:
                 prev_hash=prev_hash,
                 transactions=transactions,
                 timestamp=int(time.time()),
-                difficulty=self.difficulty,
+                difficulty=difficulty,
                 should_stop=stop_event.is_set,
             )
         finally:
