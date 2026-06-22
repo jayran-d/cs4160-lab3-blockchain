@@ -9,7 +9,6 @@ from chain.transaction import Transaction
 from config import (
     BLOCK_DIFFICULTY,
     DIFFICULTY_ADJUSTMENT_WINDOW_SIZE,
-    MIN_BLOCK_DIFFICULTY,
 )
 
 
@@ -25,7 +24,7 @@ def make_tx(data: bytes = b"data") -> Transaction:
 def add_timed_blocks(
     blockchain: Blockchain,
     timestamps: list[int],
-    difficulty: int = MIN_BLOCK_DIFFICULTY,
+    difficulty: int = BLOCK_DIFFICULTY,
 ) -> None:
     for timestamp in timestamps:
         block = mine_block(
@@ -55,7 +54,7 @@ class MinerTests(unittest.TestCase):
         previous_tip_hash = blockchain.tip_hash()
         miner = Miner(
             blockchain=blockchain,
-            difficulty=4,
+            difficulty=BLOCK_DIFFICULTY,
         )
 
         block = miner.mine_once()
@@ -72,7 +71,7 @@ class MinerTests(unittest.TestCase):
         blockchain.mempool.add(included_tx)
         miner = Miner(
             blockchain=blockchain,
-            difficulty=4,
+            difficulty=BLOCK_DIFFICULTY,
         )
 
         block = miner.mine_once()
@@ -87,7 +86,7 @@ class MinerTests(unittest.TestCase):
         broadcast_block = Mock()
         miner = Miner(
             blockchain=blockchain,
-            difficulty=4,
+            difficulty=BLOCK_DIFFICULTY,
             broadcast_block=broadcast_block,
         )
 
@@ -126,7 +125,7 @@ class MinerTests(unittest.TestCase):
         blockchain.mempool.add(tx2)
         miner = Miner(
             blockchain=blockchain,
-            difficulty=4,
+            difficulty=BLOCK_DIFFICULTY,
             max_transactions_per_block=1,
         )
 

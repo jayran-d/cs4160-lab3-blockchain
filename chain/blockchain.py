@@ -98,6 +98,9 @@ class Blockchain:
                 )
                 return False
 
+            if not self._valid_block_difficulty(block, parent_hash):
+                return False
+
             if not self._valid_block_timestamp(block, parent_hash):
                 return False
 
@@ -212,6 +215,19 @@ class Blockchain:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _valid_block_difficulty(self, block: Block, parent_hash: bytes) -> bool:
+        expected_difficulty = self.next_difficulty(parent_hash)
+
+        if block.header.difficulty != expected_difficulty:
+            print(
+                "Ignoring block with unexpected difficulty: "
+                f"difficulty={block.header.difficulty}, "
+                f"expected={expected_difficulty}"
+            )
+            return False
+
+        return True
 
     def _valid_block_timestamp(self, block: Block, parent_hash: bytes) -> bool:
         parent = self.blocks_by_hash[parent_hash]

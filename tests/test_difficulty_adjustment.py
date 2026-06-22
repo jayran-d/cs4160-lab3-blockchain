@@ -42,8 +42,8 @@ def test_same_chain_history_gives_same_next_difficulty():
     ]
     chain_a = Blockchain()
     chain_b = Blockchain()
-    add_timed_blocks(chain_a, timestamps, MIN_BLOCK_DIFFICULTY)
-    add_timed_blocks(chain_b, timestamps, MIN_BLOCK_DIFFICULTY)
+    add_timed_blocks(chain_a, timestamps, BLOCK_DIFFICULTY)
+    add_timed_blocks(chain_b, timestamps, BLOCK_DIFFICULTY)
 
     assert chain_a.next_difficulty() == chain_b.next_difficulty()
     assert chain_a.next_difficulty() == chain_a.next_difficulty()
@@ -55,23 +55,24 @@ def test_next_difficulty_rises_after_fast_blocks():
         3 * height
         for height in range(1, DIFFICULTY_ADJUSTMENT_WINDOW_SIZE + 1)
     ]
-    add_timed_blocks(chain, timestamps, MIN_BLOCK_DIFFICULTY)
+    add_timed_blocks(chain, timestamps, BLOCK_DIFFICULTY)
 
     assert chain.next_difficulty() == (
-        MIN_BLOCK_DIFFICULTY + MAX_DIFFICULTY_CHANGE_PER_BLOCK
+        BLOCK_DIFFICULTY + MAX_DIFFICULTY_CHANGE_PER_BLOCK
     )
 
 
 def test_next_difficulty_falls_after_slow_blocks():
     chain = Blockchain()
-    starting_difficulty = MIN_BLOCK_DIFFICULTY + MAX_DIFFICULTY_CHANGE_PER_BLOCK
     timestamps = [
         60 * height
         for height in range(1, DIFFICULTY_ADJUSTMENT_WINDOW_SIZE + 1)
     ]
-    add_timed_blocks(chain, timestamps, starting_difficulty)
+    add_timed_blocks(chain, timestamps, BLOCK_DIFFICULTY)
 
-    assert chain.next_difficulty() == MIN_BLOCK_DIFFICULTY
+    assert chain.next_difficulty() == (
+        BLOCK_DIFFICULTY - MAX_DIFFICULTY_CHANGE_PER_BLOCK
+    )
 
 
 def test_next_difficulty_stays_stable_near_target_block_time():
@@ -91,7 +92,8 @@ def test_next_difficulty_clamps_to_minimum_difficulty():
         60 * height
         for height in range(1, DIFFICULTY_ADJUSTMENT_WINDOW_SIZE + 1)
     ]
-    add_timed_blocks(chain, timestamps, MIN_BLOCK_DIFFICULTY)
+    add_timed_blocks(chain, timestamps, BLOCK_DIFFICULTY)
+    chain.tip().header.difficulty = MIN_BLOCK_DIFFICULTY
 
     assert chain.next_difficulty() == MIN_BLOCK_DIFFICULTY
 
@@ -102,7 +104,7 @@ def test_next_difficulty_clamps_to_maximum_difficulty():
         3 * height
         for height in range(1, DIFFICULTY_ADJUSTMENT_WINDOW_SIZE + 1)
     ]
-    add_timed_blocks(chain, timestamps, MIN_BLOCK_DIFFICULTY)
+    add_timed_blocks(chain, timestamps, BLOCK_DIFFICULTY)
     chain.tip().header.difficulty = MAX_BLOCK_DIFFICULTY
 
     assert chain.next_difficulty() == MAX_BLOCK_DIFFICULTY
