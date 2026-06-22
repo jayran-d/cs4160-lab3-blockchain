@@ -196,14 +196,14 @@ max difficulty step = 2
 tolerance band = 12s to 18s
 ```
 
-| Window | Intervals in window | Difficulty used for those blocks | Median interval | Change | Next difficulty |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Fast window 1 | `3, 3, 3, 3, 3` | 16 | 3s | +2 | 18 |
-| Fast window 2 | `3, 3, 3, 3, 3` | 18 | 3s | +2 | 20 |
-| Near target | `14, 15, 15, 16, 15` | 20 | 15s | 0 | 20 |
-| Slow window 1 | `60, 60, 60, 60, 60` | 20 | 60s | -2 | 18 |
-| Slow window 2 | `60, 60, 60, 60, 60` | 18 | 60s | -2 | 16 |
-| Near target again | `15, 16, 14, 15, 15` | 16 | 15s | 0 | 16 |
+| Window            | Intervals in window  | Difficulty used for those blocks | Median interval | Change | Next difficulty |
+| ----------------- | -------------------- | -------------------------------: | --------------: | -----: | --------------: |
+| Fast window 1     | `3, 3, 3, 3, 3`      |                               16 |              3s |     +2 |              18 |
+| Fast window 2     | `3, 3, 3, 3, 3`      |                               18 |              3s |     +2 |              20 |
+| Near target       | `14, 15, 15, 16, 15` |                               20 |             15s |      0 |              20 |
+| Slow window 1     | `60, 60, 60, 60, 60` |                               20 |             60s |     -2 |              18 |
+| Slow window 2     | `60, 60, 60, 60, 60` |                               18 |             60s |     -2 |              16 |
+| Near target again | `15, 16, 14, 15, 15` |                               16 |             15s |      0 |              16 |
 
 This shows the intended behavior:
 
@@ -214,11 +214,11 @@ This shows the intended behavior:
 
 ## Limitations
 
-This is not a production-grade difficulty adjustment algorithm. It does not use
-ASERT anchors, peer-observed timestamps, or cumulative work over the full window.
+This is not a production ready difficulty adjustment algorithm. It does not use
+ASERT anchors, peer observed timestamps, or cumulative work over the full window.
 It also relies on all honest nodes using the same constants from `config.py`.
 
-The mechanism is still suitable for the bonus because it demonstrates the core
+The mechanism is still suitable for this bonus assignment because it demonstrates the core
 properties:
 
 - same chain history gives the same next difficulty;
@@ -226,5 +226,5 @@ properties:
 - received blocks cannot declare arbitrary difficulty;
 - fast blocks increase difficulty;
 - slow blocks decrease difficulty;
-- near-target blocks keep difficulty stable;
+- near target blocks keep difficulty stable;
 - invalid timestamps are rejected before they affect difficulty.
