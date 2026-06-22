@@ -75,21 +75,23 @@ class Miner:
         Returns the mined block when it was accepted by the blockchain.
         Returns None when the mined block was rejected.
         """
+        prev_hash = self.blockchain.tip_hash()
+        difficulty = (
+            self.difficulty
+            if self.difficulty is not None
+            else self.blockchain.next_difficulty(prev_hash)
+        )
+        difficulty_source = "fixed" if self.difficulty is not None else "adaptive"
         transactions = self.blockchain.mempool.transactions_for_block(
             self.max_transactions_per_block
         )
         print(
             "Mining next block: "
             f"parent_height={self.blockchain.height()}, "
-            f"parent_hash={self.blockchain.tip_hash().hex()}, "
-            f"tx_count={len(transactions)}"
-        )
-
-        prev_hash = self.blockchain.tip_hash()
-        difficulty = (
-            self.difficulty
-            if self.difficulty is not None
-            else self.blockchain.next_difficulty(prev_hash)
+            f"parent_hash={prev_hash.hex()}, "
+            f"tx_count={len(transactions)}, "
+            f"difficulty={difficulty}, "
+            f"difficulty_source={difficulty_source}"
         )
         stop_event = self._new_stop_event()
 

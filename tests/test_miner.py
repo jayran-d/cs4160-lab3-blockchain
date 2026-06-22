@@ -4,7 +4,13 @@ from unittest.mock import Mock
 from chain.blockchain import Blockchain
 from chain.mempool import Mempool
 from chain.miner import Miner
+from chain.pow import mine_block
 from chain.transaction import Transaction
+from config import (
+    BLOCK_DIFFICULTY,
+    DIFFICULTY_ADJUSTMENT_WINDOW_SIZE,
+    MIN_BLOCK_DIFFICULTY,
+)
 
 
 def make_tx(data: bytes = b"data") -> Transaction:
@@ -16,7 +22,33 @@ def make_tx(data: bytes = b"data") -> Transaction:
     )
 
 
+def add_timed_blocks(
+    blockchain: Blockchain,
+    timestamps: list[int],
+    difficulty: int = MIN_BLOCK_DIFFICULTY,
+) -> None:
+    for timestamp in timestamps:
+        block = mine_block(
+            prev_hash=blockchain.tip_hash(),
+            transactions=[],
+            timestamp=timestamp,
+            difficulty=difficulty,
+        )
+        assert blockchain.add_block(block)
+
+
 class MinerTests(unittest.TestCase):
+    def test_mine_once_uses_initial_adaptive_difficulty_on_early_chain(self) -> None:
+        # With no history, the adaptive path should fall back to the initial difficulty.
+        blockchain = Blockchain()
+        miner = Miner(blockchain=blockchain)
+
+        block = miner.mine_once()
+
+        self.assertIsNotNone(block)
+        self.assertEqual(block.header.difficulty, BLOCK_DIFFICULTY)
+        self.assertEqual(blockchain.tip(), block)
+
     def test_mine_once_adds_block_on_current_blockchain_tip(self) -> None:
         # The miner should mine on top of the current canonical blockchain tip.
         blockchain = Blockchain()
@@ -104,6 +136,23 @@ class MinerTests(unittest.TestCase):
         self.assertEqual(block.transactions, [tx1])
         self.assertEqual(len(blockchain.mempool), 1)
         self.assertTrue(blockchain.mempool.contains(tx2.tx_hash()))
+
+    def test_mine_once_uses_expected_adaptive_difficulty_after_fast_blocks(self) -> None:
+        # Fast recent blocks should raise the computed difficulty used by the miner.
+        blockchain = Blockchain()
+        timestamps = [
+            3 * height
+            for height in range(1, DIFFICULTY_ADJUSTMENT_WINDOW_SIZE + 1)
+        ]
+        add_timed_blocks(blockchain, timestamps)
+        expected_difficulty = blockchain.next_difficulty()
+        miner = Miner(blockchain=blockchain)
+
+        block = miner.mine_once()
+
+        self.assertIsNotNone(block)
+        self.assertEqual(block.header.difficulty, expected_difficulty)
+        self.assertEqual(blockchain.tip(), block)
 
 
 if __name__ == "__main__":
